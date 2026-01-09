@@ -65,12 +65,9 @@ function updateVersions(solution: Solution) {
   }
 }
 
-export async function prepare(
-  newChangelogContent: string,
-  singlePackage?: string,
-) {
+export async function prepare(newChangelogContent: string) {
   const changes = parseChangeLogOrExit(newChangelogContent);
-  const solution = planVersionBumps(changes, singlePackage);
+  const solution = planVersionBumps(changes);
   updateVersions(solution);
   const description = updateChangelog(newChangelogContent, solution);
   saveSolution(solution, description);

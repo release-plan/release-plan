@@ -14,18 +14,10 @@ yargs(process.argv.slice(2))
   .command(
     'prepare',
     `Edits the package.json and changelog files to prepare for release.`,
-    (yargs) =>
-      fromStdin(yargs).option('singlePackage', {
-        type: 'string',
-        description:
-          'Allows you to run this command in a non monorepo and define the package name',
-      }),
+    (yargs) => fromStdin(yargs),
     async function (opts) {
       const { prepare } = await import('./prepare.js');
-      const solution = await prepare(
-        await newChangelogContent(opts),
-        opts.singlePackage,
-      );
+      const solution = await prepare(await newChangelogContent(opts));
       const { explain } = await import('./plan.js');
       process.stdout.write(explain(solution));
       process.stdout.write(`\nSuccessfully prepared released\n`);
@@ -112,17 +104,11 @@ yargs(process.argv.slice(2))
   .command(
     'explain-plan',
     `Explains which packages need to be released at what versions and why.`,
-    (yargs) =>
-      fromStdin(yargs).option('singlePackage', {
-        type: 'string',
-        description:
-          'Allows you to run this command in a non monorepo and define the package name',
-      }),
+    (yargs) => fromStdin(yargs),
     async function (opts) {
       const { planVersionBumps, explain } = await import('./plan.js');
       const solution = planVersionBumps(
         parseChangeLogOrExit(await newChangelogContent(opts)),
-        opts.singlePackage,
       );
       console.log(explain(solution));
     },
