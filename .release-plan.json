@@ -2,8 +2,8 @@
   "solution": {
     "release-plan": {
       "impact": "patch",
-      "oldVersion": "0.17.2",
-      "newVersion": "0.17.3",
+      "oldVersion": "0.17.3",
+      "newVersion": "0.17.4",
       "tagName": "latest",
       "constraints": [
         {
@@ -22,5 +22,5 @@
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-01-09)\n\n* release-plan 0.17.3 (patch)\n\n#### :bug: Bug Fix\n* `release-plan`\n  * [#228](https://github.com/release-plan/release-plan/pull/228) Update `github-changelog` to `v2.1.4` to support bot users ([@gossi](https://github.com/gossi))\n\n#### :memo: Documentation\n* `release-plan`\n  * [#178](https://github.com/release-plan/release-plan/pull/178) Documentation site with `vitepress` ([@gossi](https://github.com/gossi))\n\n#### :house: Internal\n* `release-plan`\n  * [#213](https://github.com/release-plan/release-plan/pull/213) Sanitize Package Manager Version ([@gossi](https://github.com/gossi))\n\n#### Committers: 1\n- Thomas Gossmann ([@gossi](https://github.com/gossi))\n"
+  "description": "## Release (2026-01-09)\n\n* release-plan 0.17.4 (patch)\n\n#### :bug: Bug Fix\n* `release-plan`\n  * [#228](https://github.com/release-plan/release-plan/pull/228) Update `github-changelog` to `v2.1.4` to support bot users ([@gossi](https://github.com/gossi))\n\n#### :memo: Documentation\n* `release-plan`\n  * [#230](https://github.com/release-plan/release-plan/pull/230) Rename `embroider-build` to `release-plan` ([@gossi](https://github.com/gossi))\n  * [#178](https://github.com/release-plan/release-plan/pull/178) Documentation site with `vitepress` ([@gossi](https://github.com/gossi))\n\n#### :house: Internal\n* `release-plan`\n  * [#214](https://github.com/release-plan/release-plan/pull/214) Prepare Release ([@github-actions[bot]](https://github.com/apps/github-actions))\n  * [#213](https://github.com/release-plan/release-plan/pull/213) Sanitize Package Manager Version ([@gossi](https://github.com/gossi))\n\n#### Committers: 2\n- GitHub Actions [Bot] ([@github-actions](https://github.com/apps/github-actions))\n- Thomas Gossmann ([@gossi](https://github.com/gossi))\n"
 }
