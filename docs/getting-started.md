@@ -2,7 +2,7 @@
 
 ## Automated
 
-Use [`create-release-plan-setup`](https://github.com/embroider-build/create-release-plan-setup), see the [README](https://github.com/embroider-build/create-release-plan-setup) over there for detailed instructions.
+Use [`create-release-plan-setup`](https://github.com/release-plan/create-release-plan-setup), see the [README](https://github.com/release-plan/create-release-plan-setup) over there for detailed instructions.
 
 If you already have a local `GITHUB_AUTH` token,
 
@@ -10,7 +10,7 @@ If you already have a local `GITHUB_AUTH` token,
 npx create-release-plan-setup@latest 
 ```
 
-does all the setup for you (aside from repo-configuration ([see here](https://github.com/embroider-build/create-release-plan-setup)))
+does all the setup for you (aside from repo-configuration ([see here](https://github.com/release-plan/create-release-plan-setup)))
 
 <details><summary>how to get a <code>GITHUB_AUTH</code> token</summary>
 

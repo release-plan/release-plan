@@ -48,7 +48,7 @@ Summary:
 | number of steps | 5     | 6          | 8          |
 | Downsides | n/a      | <ul><li>maintainers need admin access to both GitHub and NPM</li><li>requires a computer</li></ul>      |  <ul><li>requires push access to the submitter's PR, or potentially risk losing steam from the contributor to ask them to create the changeset</li><li>more up-front work required per change/PR</li><li>hard to go back and add a changeset and have it associated with the PR correctly (maybe impossible), so forgetting to add changesets pre-merge can totally ruin the accuracy of changeset's changelog</li><li>requires a computer</li></ul> |
 
-[^gh-by-default]: While GitHub Actions is the default setup via [`create-release-plan-setup`](https://github.com/embroider-build/create-release-plan-setup)
+[^gh-by-default]: While GitHub Actions is the default setup via [`create-release-plan-setup`](https://github.com/release-plan/create-release-plan-setup)
 [^after-initial-setup]: after initial setup, which is already mostly automated.
 [^npm-config]: The NPM token can be granular, and the package needs to have its "Publishing access" configured to either "Don't require two-factor authentication" or, "Require two-factor authentication or an automation or granular access token" (recommended). This can be configured under `https://www.npmjs.com/package/{package-name}/access`
 [^release-anywhere]: You can release from bed, the mall, the porcelain,

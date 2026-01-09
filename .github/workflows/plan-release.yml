@@ -84,7 +84,7 @@ jobs:
           branch: release-preview
           title: Prepare Release
           body: |
-            This PR is a preview of the release that [release-plan](https://github.com/embroider-build/release-plan) has prepared. To release you should just merge this PR 👍
+            This PR is a preview of the release that [release-plan](https://github.com/release-plan/release-plan) has prepared. To release you should just merge this PR 👍
 
             -----------------------------------------
 

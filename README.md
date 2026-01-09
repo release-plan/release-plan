@@ -10,7 +10,7 @@ _The most contributor friendly and hands-off release tool there is_.
 - 🔐 No need to give maintainers access to npm[^npm-config]
 - 📦 PNPM and monorepo support _by default_
   - also supports non-pnpm repos
-- 🚀 Release preview PR 
+- 🚀 Release preview PR
   - release via merge of the release preview PR
 - 📝 Automatic changelog
   - changelog entries editable by editing PR titles
@@ -22,8 +22,7 @@ This allows folks with GH Maintainer access to preview and release to npm withou
 [^npm-config]: The NPM token can be granular, and the package needs to have its "Publishing access" configured to either "Don't require two-factor authentication" or, "Require two-factor authentication or an automation or granular access token" (recommended). This can be configured under `https://www.npmjs.com/package/{package-name}/access`
 [^release-anywhere]: You can release from bed, the mall, the porcelain, anywhere! No need for a computer! (assuming you have a smart phone)
 
-[gh-create]: https://github.com/embroider-build/create-release-plan-setup
-
+[gh-create]: https://github.com/release-plan/create-release-plan-setup
 
 ## Usage & Installation
 
@@ -31,10 +30,12 @@ This allows folks with GH Maintainer access to preview and release to npm withou
 
 Use [`create-release-plan-setup`][gh-create], see the [README][gh-create] over there for detailed instructions.
 
-If you already have a local `GITHUB_AUTH` token, 
+If you already have a local `GITHUB_AUTH` token,
+
 ```bash
 npx create-release-plan-setup@latest 
 ```
+
 does all the setup for you (aside from repo-configuration ([see here][gh-create]))
 
 <details><summary>how to get a GITHUB_AUTH token</summary>
@@ -42,13 +43,15 @@ does all the setup for you (aside from repo-configuration ([see here][gh-create]
 You can create a [GitHub personal access token here](https://github.com/settings/tokens/new?scopes=repo&description=GITHUB_AUTH+env+variable)
 
 Or, if you use the [`gh` CLI](https://cli.github.com/), you can temporarily expose a token to your local terminal shell via:
+
 ```bash
 export GITHUB_AUTH=$(gh auth token);
 ```
 
 </details>
 
-This command will create 
+This command will create
+
 ```
 .github/workflows/
   - plan-release.yml
@@ -64,16 +67,16 @@ which is responsible for automating the process that you'd run through manually 
 npm i --save-dev release-plan
 ```
 
-To use `release-plan` you need to have a valid `GITHUB_AUTH` environment variable that has the `repo` permission. This allows `release-plan` to check what PRs have been merged since the last release and plan the release accordingly. 
+To use `release-plan` you need to have a valid `GITHUB_AUTH` environment variable that has the `repo` permission. This allows `release-plan` to check what PRs have been merged since the last release and plan the release accordingly.
 
-For new repositories or those without any tags, `release-plan` also requires an initial tag, we recommend: 
+For new repositories or those without any tags, `release-plan` also requires an initial tag, we recommend:
+
 ```bash
 git tag v0.0.0
 git push origin v0.0.0
 ```
 
-
-1. Run `npx release-plan explain-plan`. If there are unlabeled PRs that need to be released it will complain and show you a list of them. Each PR needs to be labeled with one of: 
+1. Run `npx release-plan explain-plan`. If there are unlabeled PRs that need to be released it will complain and show you a list of them. Each PR needs to be labeled with one of:
     - breaking
     - enhancement
     - bug
@@ -102,24 +105,21 @@ Some config for `release-plan` applies globally for each run of the program, thi
 
 Allows you to run "publish" even if there are uncommitted changes in your repo. Useful only for developing "publish" itself
 
-        
 #### --otp <your-one-time-password>
-          
-If the publish operation that `release-plan` is going to do requires a one-time-password to complete, you can use this option and `release-plan` will pass this on to `npm` for all operations.
 
+If the publish operation that `release-plan` is going to do requires a one-time-password to complete, you can use this option and `release-plan` will pass this on to `npm` for all operations.
 
 #### --dryRun
 
 Run through the release, but log to stdout instead of tagging/pushing/publishing. This can be useful when you're evaluating what release-plan is going to do when you run `release-plan publish`
 
-
 #### --publish-branch <branch>
 
 When using `pnpm` there is a check to make sure that you're only publishing from `master` or `main`. Passing --publish-branch to `release-plan` will pass it directly on to `pnpm`. This is not needed when using `npm`
   
-#### --provenance 
+#### --provenance
 
-This passes on the `--provenance` flag to `npm publish`. Note this doesn't work with `pnpm` so you would need to set the `NPM_CONFIG_PROVENANCE` environment variable to `true` in your publish script. 
+This passes on the `--provenance` flag to `npm publish`. Note this doesn't work with `pnpm` so you would need to set the `NPM_CONFIG_PROVENANCE` environment variable to `true` in your publish script.
 
 #### --access <access-level>
 
@@ -135,7 +135,7 @@ This project attempts to have sensible defaults so there is not any need to conf
 
 #### semverIncrementAs
 
-When `release-plan` is deciding what part of the semver version to update it considers the **Impact** a PR has on a pakcage. Impact can be either `major`, `minor`, or `patch` and by default they directly map on to the `<major>.<minor>.<patch>` parts of semver versions. For projects that need extra control over how versions are incremented, e.g. you are in a pre-1.0 release and you want a `major` impact to only update the `<minor>` section of semver, then you can set the `semverIncrementAs` setting to remap which semver version a particular **impact** would affect. 
+When `release-plan` is deciding what part of the semver version to update it considers the **Impact** a PR has on a pakcage. Impact can be either `major`, `minor`, or `patch` and by default they directly map on to the `<major>.<minor>.<patch>` parts of semver versions. For projects that need extra control over how versions are incremented, e.g. you are in a pre-1.0 release and you want a `major` impact to only update the `<minor>` section of semver, then you can set the `semverIncrementAs` setting to remap which semver version a particular **impact** would affect.
 
 ```json
 {
@@ -185,10 +185,10 @@ When you use `release-plan` to publish to npm it will by default publish your pa
 ```
 
 ## Usage in GitHub Enterprise
+
 to use release-plan in GitHub enterprise environment you have to set GITHUB_DOMAIN to your ghe domain
 
 GITHUB_DOMAIN=github.custom.com
-
 
 if you have a custom api endpoint you need to set it with
 GITHUB_API_URL to your ghe api url e.g.
@@ -199,8 +199,7 @@ GITHUB_API_URL=https://api.github.custom.com
 
 Note that we take the stance of reducing friction for new contributors (regardless of how new to GitHub they are), we want to optimize for the contribution, and assume that maintainers can handle a little bit of process -- and with this stance, changesets is the _most work_ out of this comparison.
 
-Additionally, this comparison assumes the recommended configuration for each release tool. 
-
+Additionally, this comparison assumes the recommended configuration for each release tool.
 
 | release-plan        | release-it (requires computer) | changesets (requires computer) |
 | ------------------  | ------------------------------ | ------------------------------ |
@@ -210,16 +209,15 @@ Additionally, this comparison assumes the recommended configuration for each rel
 |                     |                                | run `pnpm changeset`
 |                     |                                | write something about the change
 |                     |                                | push it back up to the PR-submitter's branch
-| ensure the PR title is what you want in the changelog | same | 
-|                     | have the repo cloned | 
+| ensure the PR title is what you want in the changelog | same |
+|                     | have the repo cloned |
 |                     | update / sync repo locally |
 |                     | run `npx release -it`     |
 | automation creates a preview PR |  | same
 | merging that preview PR does the actual release | | same
 
-
-
 _Needed_ Access:
+
 |   | release-plan        | release-it | changesets |
 | - | ------------------  | ---------- | ---------- |
 | NPM_TOKEN | only ci     | local      | only ci    |
@@ -228,6 +226,7 @@ _Needed_ Access:
 Note that while it's recommended to use `release-plan` with full automation, `release-plan` can be used locally, as described in the [Manual Installation](#manual) section of this README.
 
 Summary:
+
 |   | release-plan        | release-it | changesets |
 | - | ------------------  | ---------- | ---------- |
 | number of steps | 5     | 6          | 8          |

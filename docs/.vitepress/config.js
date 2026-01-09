@@ -54,7 +54,7 @@ export default withMermaid(
       socialLinks: [
         {
           icon: 'github',
-          link: 'https://github.com/embroider-build/release-plan',
+          link: 'https://github.com/release-plan/release-plan',
         },
       ],
     },

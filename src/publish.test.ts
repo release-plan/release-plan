@@ -363,7 +363,7 @@ describe('publish', function () {
           {
             "body": "new release",
             "name": "v1.0.0-release-plan",
-            "owner": "embroider-build",
+            "owner": "release-plan",
             "prerelease": false,
             "repo": "release-plan",
             "tag_name": "v1.0.0-release-plan",
@@ -399,7 +399,7 @@ describe('publish', function () {
           {
             "body": "new release",
             "name": "v1.0.0-release-plan",
-            "owner": "embroider-build",
+            "owner": "release-plan",
             "prerelease": true,
             "repo": "release-plan",
             "tag_name": "v1.0.0-release-plan",
