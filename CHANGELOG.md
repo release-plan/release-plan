@@ -2,6 +2,28 @@
 
 ## Release (2026-01-09)
 
+* release-plan 0.17.4 (patch)
+
+#### :bug: Bug Fix
+* `release-plan`
+  * [#228](https://github.com/release-plan/release-plan/pull/228) Update `github-changelog` to `v2.1.4` to support bot users ([@gossi](https://github.com/gossi))
+
+#### :memo: Documentation
+* `release-plan`
+  * [#230](https://github.com/release-plan/release-plan/pull/230) Rename `embroider-build` to `release-plan` ([@gossi](https://github.com/gossi))
+  * [#178](https://github.com/release-plan/release-plan/pull/178) Documentation site with `vitepress` ([@gossi](https://github.com/gossi))
+
+#### :house: Internal
+* `release-plan`
+  * [#214](https://github.com/release-plan/release-plan/pull/214) Prepare Release ([@github-actions[bot]](https://github.com/apps/github-actions))
+  * [#213](https://github.com/release-plan/release-plan/pull/213) Sanitize Package Manager Version ([@gossi](https://github.com/gossi))
+
+#### Committers: 2
+- GitHub Actions [Bot] ([@github-actions](https://github.com/apps/github-actions))
+- Thomas Gossmann ([@gossi](https://github.com/gossi))
+
+## Release (2026-01-09)
+
 * release-plan 0.17.3 (patch)
 
 #### :bug: Bug Fix
