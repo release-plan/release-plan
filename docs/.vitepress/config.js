@@ -11,6 +11,10 @@ export default withMermaid(
     title: 'Release-Plan',
     description: 'Release from anywhere',
     themeConfig: {
+      outline: {
+        level: [2, 3],
+      },
+
       search: {
         provider: 'local',
       },
@@ -39,6 +43,7 @@ export default withMermaid(
             { text: 'Pre Releases', link: '/pre-releases' },
             { text: 'Provenance', link: '/provenance' },
             { text: 'Commit Signing', link: '/commit-signing' },
+            { text: 'Trusted Publishing', link: '/trusted-publishing' },
             { text: 'Github Enterprise', link: '/github-enterprise' },
           ],
         },
