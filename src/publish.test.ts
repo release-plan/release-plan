@@ -6,6 +6,7 @@ import {
   IssueReporter,
 } from './publish.js';
 import { Solution } from './plan.js';
+import * as planModule from './plan.js';
 import { getPackages } from './interdep.js';
 import { execa } from 'execa';
 
@@ -25,6 +26,7 @@ vi.mock('execa', (importOriginal) => {
 // we aren't currently using this so we can just ignore for now
 const reporter = new IssueReporter();
 
+const listTagsMock = vi.fn().mockResolvedValue({ data: [] });
 const octokit = vi.fn();
 vi.mock('@octokit/rest', () => {
   return {
@@ -37,8 +39,11 @@ vi.mock('@octokit/rest', () => {
             err.status = 404;
             throw err;
           },
+          createRelease: vi.fn(),
+          listTags: listTagsMock,
         },
         git: {
+          createRef: vi.fn(),
           getRef() {
             const err = new Error() as any;
             err.status = 404;
@@ -89,6 +94,157 @@ describe('publish', function () {
         },
       ]
     `);
+  });
+
+  describe('tag format', function () {
+    it('creates tags without package name suffix for single-package repos with no prior suffixed tags', async function () {
+      vi.spyOn(planModule, 'loadSolution').mockReturnValue({
+        solution: new Map([
+          [
+            '@scope/my-package',
+            {
+              oldVersion: '1.0.0',
+              newVersion: '1.1.0',
+              impact: 'minor' as const,
+              constraints: [],
+              tagName: 'latest',
+              pkgJSONPath: './package.json',
+            },
+          ],
+        ]) as Solution,
+        description: 'test release',
+      });
+      process.env.GITHUB_API_URL = 'https://api.github.com';
+      process.env.GITHUB_AUTH = 'auth';
+
+      const consoleSpy = vi.spyOn(process.stdout, 'write');
+
+      await publish({
+        skipRepoSafetyCheck: true,
+        dryRun: true,
+      });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join('');
+      expect(output).toContain('git tag v1.1.0`');
+      expect(output).not.toContain('git tag v1.1.0-@scope/my-package');
+    });
+
+    it('creates tags with package name suffix for multi-package repos', async function () {
+      vi.spyOn(planModule, 'loadSolution').mockReturnValue({
+        solution: new Map([
+          [
+            '@scope/pkg-a',
+            {
+              oldVersion: '1.0.0',
+              newVersion: '1.1.0',
+              impact: 'minor' as const,
+              constraints: [],
+              tagName: 'latest',
+              pkgJSONPath: './package.json',
+            },
+          ],
+          [
+            '@scope/pkg-b',
+            {
+              oldVersion: '2.0.0',
+              newVersion: '2.1.0',
+              impact: 'minor' as const,
+              constraints: [],
+              tagName: 'latest',
+              pkgJSONPath: './package.json',
+            },
+          ],
+        ]) as Solution,
+        description: 'test release',
+      });
+      process.env.GITHUB_API_URL = 'https://api.github.com';
+      process.env.GITHUB_AUTH = 'auth';
+
+      const consoleSpy = vi.spyOn(process.stdout, 'write');
+
+      await publish({
+        skipRepoSafetyCheck: true,
+        dryRun: true,
+      });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join('');
+      expect(output).toContain('git tag v1.1.0-@scope/pkg-a');
+      expect(output).toContain('git tag v2.1.0-@scope/pkg-b');
+    });
+
+    it('keeps suffixed tags for single-package repos with existing suffixed tags', async function () {
+      listTagsMock.mockResolvedValueOnce({
+        data: [
+          { name: 'v1.0.0-@scope/my-package' },
+          { name: 'v0.9.0-@scope/my-package' },
+        ],
+      });
+
+      vi.spyOn(planModule, 'loadSolution').mockReturnValue({
+        solution: new Map([
+          [
+            '@scope/my-package',
+            {
+              oldVersion: '1.0.0',
+              newVersion: '1.1.0',
+              impact: 'minor' as const,
+              constraints: [],
+              tagName: 'latest',
+              pkgJSONPath: './package.json',
+            },
+          ],
+        ]) as Solution,
+        description: 'test release',
+      });
+      process.env.GITHUB_API_URL = 'https://api.github.com';
+      process.env.GITHUB_AUTH = 'auth';
+
+      const consoleSpy = vi.spyOn(process.stdout, 'write');
+
+      await publish({
+        skipRepoSafetyCheck: true,
+        dryRun: true,
+      });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join('');
+      expect(output).toContain('git tag v1.1.0-@scope/my-package');
+    });
+
+    it('keeps clean tags for single-package repos with existing non-suffixed tags', async function () {
+      listTagsMock.mockResolvedValueOnce({
+        data: [{ name: 'v1.0.0' }, { name: 'v0.9.0' }],
+      });
+
+      vi.spyOn(planModule, 'loadSolution').mockReturnValue({
+        solution: new Map([
+          [
+            '@scope/my-package',
+            {
+              oldVersion: '1.0.0',
+              newVersion: '1.1.0',
+              impact: 'minor' as const,
+              constraints: [],
+              tagName: 'latest',
+              pkgJSONPath: './package.json',
+            },
+          ],
+        ]) as Solution,
+        description: 'test release',
+      });
+      process.env.GITHUB_API_URL = 'https://api.github.com';
+      process.env.GITHUB_AUTH = 'auth';
+
+      const consoleSpy = vi.spyOn(process.stdout, 'write');
+
+      await publish({
+        skipRepoSafetyCheck: true,
+        dryRun: true,
+      });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join('');
+      expect(output).toContain('git tag v1.1.0`');
+      expect(output).not.toContain('git tag v1.1.0-@scope/my-package');
+    });
   });
 
   describe('npmPublish', function () {
