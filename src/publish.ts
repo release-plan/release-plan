@@ -26,7 +26,18 @@ async function hasCleanRepo(): Promise<boolean> {
   return result.stdout.length === 0;
 }
 
-function tagFor(pkgName: string, entry: { newVersion: string }): string {
+function shouldUseSuffixedTags(solution: Solution): boolean {
+  return solution.size > 1;
+}
+
+function tagFor(
+  pkgName: string,
+  entry: { newVersion: string },
+  useSuffix: boolean,
+): string {
+  if (!useSuffix) {
+    return `v${entry.newVersion}`;
+  }
   return `v${entry.newVersion}-${pkgName}`;
 }
 
@@ -79,13 +90,14 @@ async function makeTags(
   reporter: IssueReporter,
   octokit: Octokit,
   options: PublishOptions,
+  useSuffix: boolean,
 ): Promise<void> {
   for (const [pkgName, entry] of solution) {
     if (!entry.impact) {
       continue;
     }
     try {
-      const tag = tagFor(pkgName, entry);
+      const tag = tagFor(pkgName, entry, useSuffix);
       const cwd = dirname(entry.pkgJSONPath);
       const sha = await getSha(cwd);
 
@@ -116,10 +128,13 @@ async function makeTags(
   }
 }
 
-function chooseRepresentativeTag(solution: Solution): string {
+function chooseRepresentativeTag(
+  solution: Solution,
+  useSuffix: boolean,
+): string {
   for (const [pkgName, entry] of solution) {
     if (entry.impact) {
-      return tagFor(pkgName, entry);
+      return tagFor(pkgName, entry, useSuffix);
     }
   }
   process.stderr.write('Found no releasable packages in the plan');
@@ -361,14 +376,15 @@ To publish a release you should start from a clean repo. Run "npx release-plan p
     baseUrl,
   });
 
-  const representativeTag = chooseRepresentativeTag(solution);
+  const useSuffix = shouldUseSuffixedTags(solution);
+  const representativeTag = chooseRepresentativeTag(solution, useSuffix);
 
   // from this point forward we don't stop if something goes wrong, we just keep
   // track of whether anything went wrong so we can use the right exit code at
   // the end.
   const reporter = new IssueReporter();
 
-  await makeTags(solution, reporter, octokit, opts);
+  await makeTags(solution, reporter, octokit, opts, useSuffix);
   await npmPublish(solution, reporter, opts, packageManager());
   await createGithubRelease(
     octokit,
