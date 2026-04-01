@@ -1,18 +1,14 @@
 {
   "solution": {
     "release-plan": {
-      "impact": "patch",
-      "oldVersion": "0.17.3",
-      "newVersion": "0.17.4",
+      "impact": "minor",
+      "oldVersion": "0.17.4",
+      "newVersion": "0.18.0",
       "tagName": "latest",
       "constraints": [
         {
-          "impact": "patch",
-          "reason": "Appears in changelog section :bug: Bug Fix"
-        },
-        {
-          "impact": "patch",
-          "reason": "Appears in changelog section :memo: Documentation"
+          "impact": "minor",
+          "reason": "Appears in changelog section :rocket: Enhancement"
         },
         {
           "impact": "patch",
@@ -22,5 +18,5 @@
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-01-09)\n\n* release-plan 0.17.4 (patch)\n\n#### :bug: Bug Fix\n* `release-plan`\n  * [#228](https://github.com/release-plan/release-plan/pull/228) Update `github-changelog` to `v2.1.4` to support bot users ([@gossi](https://github.com/gossi))\n\n#### :memo: Documentation\n* `release-plan`\n  * [#230](https://github.com/release-plan/release-plan/pull/230) Rename `embroider-build` to `release-plan` ([@gossi](https://github.com/gossi))\n  * [#178](https://github.com/release-plan/release-plan/pull/178) Documentation site with `vitepress` ([@gossi](https://github.com/gossi))\n\n#### :house: Internal\n* `release-plan`\n  * [#214](https://github.com/release-plan/release-plan/pull/214) Prepare Release ([@github-actions[bot]](https://github.com/apps/github-actions))\n  * [#213](https://github.com/release-plan/release-plan/pull/213) Sanitize Package Manager Version ([@gossi](https://github.com/gossi))\n\n#### Committers: 2\n- GitHub Actions [Bot] ([@github-actions](https://github.com/apps/github-actions))\n- Thomas Gossmann ([@gossi](https://github.com/gossi))\n"
+  "description": "## Release (2026-04-01)\n\n* release-plan 0.18.0 (minor)\n\n#### :rocket: Enhancement\n* `release-plan`\n  * [#233](https://github.com/release-plan/release-plan/pull/233) feat: auto-detect tag format for single-package repos ([@LevelbossMike](https://github.com/LevelbossMike))\n\n#### :house: Internal\n* `release-plan`\n  * [#238](https://github.com/release-plan/release-plan/pull/238) add missing GITHUB_TOKEN to release-plan prepare ([@mansona](https://github.com/mansona))\n  * [#237](https://github.com/release-plan/release-plan/pull/237) add missing pnpm install to fix release ([@mansona](https://github.com/mansona))\n  * [#236](https://github.com/release-plan/release-plan/pull/236) update release plan Github CI to support OIDC ([@mansona](https://github.com/mansona))\n\n#### Committers: 2\n- Chris Manson ([@mansona](https://github.com/mansona))\n- Michael Klein ([@LevelbossMike](https://github.com/LevelbossMike))\n"
 }
