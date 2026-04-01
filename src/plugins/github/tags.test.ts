@@ -108,7 +108,7 @@ describe('github-tags plugin', function () {
     expect(mockCreateRef.mock.lastCall![0]).toMatchObject({
       owner: 'release-plan',
       repo: 'release-plan',
-      ref: 'refs/tags/v1.0.0-release-plan',
+      ref: 'refs/tags/v1.0.0',
       type: 'commit',
     });
   });
@@ -161,5 +161,69 @@ describe('github-tags plugin', function () {
     } finally {
       if (savedAuth) process.env.GITHUB_AUTH = savedAuth;
     }
+  });
+});
+
+describe('tag format', function () {
+  it('creates tags without package name suffix for single-package repos', async function () {
+    const plugin = githubTags();
+    const api = makeApi();
+    const solution = new Map([
+      [
+        '@scope/my-package',
+        {
+          oldVersion: '1.0.0',
+          newVersion: '1.1.0',
+          impact: 'minor' as const,
+          constraints: [],
+          tagName: 'latest',
+          pkgJSONPath: './package.json',
+        },
+      ],
+    ]) as Solution;
+
+    process.env.GITHUB_API_URL = 'https://api.github.com';
+    process.env.GITHUB_AUTH = 'auth';
+
+    await plugin.publish(makeContext(solution, true), api);
+
+    const output = api.infos[0];
+
+    expect(output).toContain('git tag v1.1.0`');
+    expect(output).not.toContain('git tag v1.1.0-@scope/my-package');
+  });
+
+  it('creates tags with package name suffix for multi-package repos', async function () {
+    const plugin = githubTags();
+    const api = makeApi();
+    const solution = new Map([
+      [
+        '@scope/pkg-a',
+        {
+          oldVersion: '1.0.0',
+          newVersion: '1.1.0',
+          impact: 'minor' as const,
+          constraints: [],
+          tagName: 'latest',
+          pkgJSONPath: './package.json',
+        },
+      ],
+      [
+        '@scope/pkg-b',
+        {
+          oldVersion: '2.0.0',
+          newVersion: '2.1.0',
+          impact: 'minor' as const,
+          constraints: [],
+          tagName: 'latest',
+          pkgJSONPath: './package.json',
+        },
+      ],
+    ]) as Solution;
+
+    await plugin.publish(makeContext(solution, true), api);
+
+    expect(api.infos[0]).toContain('git tag v1.1.0-@scope/pkg-a');
+    expect(api.infos[1]).toContain('git tag v2.1.0-@scope/pkg-b');
   });
 });

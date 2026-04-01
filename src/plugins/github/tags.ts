@@ -1,7 +1,13 @@
 import { Octokit } from '@octokit/rest';
 import { dirname } from 'path';
 import type { PublishPlugin } from '../../plugin-types.js';
-import { getRepo, createOctokit, getSha, tagFor } from './shared.js';
+import {
+  getRepo,
+  createOctokit,
+  getSha,
+  tagFor,
+  shouldUseSuffixedTags,
+} from './shared.js';
 
 async function doesTagExist(
   octokit: Octokit,
@@ -48,7 +54,8 @@ export function githubTags(): PublishPlugin {
           continue;
         }
         try {
-          const tag = tagFor(pkgName, entry);
+          const useSuffix = shouldUseSuffixedTags(context.solution);
+          const tag = tagFor(pkgName, entry, useSuffix);
           const cwd = dirname(entry.pkgJSONPath);
           const sha = await getSha(cwd);
 
@@ -67,6 +74,7 @@ export function githubTags(): PublishPlugin {
           }
 
           if (context.dryRun) {
+            console.log('logging to infos');
             api.info(`--dryRun active. Skipping \`git tag ${tag}\``);
             continue;
           }

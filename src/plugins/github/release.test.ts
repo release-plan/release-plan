@@ -82,11 +82,11 @@ describe('github-release plugin', function () {
       [
         {
           "body": "new release",
-          "name": "v1.0.0-release-plan",
+          "name": "v1.0.0",
           "owner": "release-plan",
           "prerelease": false,
           "repo": "release-plan",
-          "tag_name": "v1.0.0-release-plan",
+          "tag_name": "v1.0.0",
           "target_commitish": "test-sha",
         },
       ]
@@ -107,11 +107,11 @@ describe('github-release plugin', function () {
       [
         {
           "body": "new release",
-          "name": "v1.0.0-release-plan",
+          "name": "v1.0.0",
           "owner": "release-plan",
           "prerelease": true,
           "repo": "release-plan",
-          "tag_name": "v1.0.0-release-plan",
+          "tag_name": "v1.0.0",
           "target_commitish": "test-sha",
         },
       ]

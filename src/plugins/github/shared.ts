@@ -45,14 +45,28 @@ export async function getSha(cwd: string): Promise<string> {
   return result.stdout.trim();
 }
 
-export function tagFor(pkgName: string, entry: { newVersion: string }): string {
+export function shouldUseSuffixedTags(solution: Solution): boolean {
+  return solution.size > 1;
+}
+
+export function tagFor(
+  pkgName: string,
+  entry: { newVersion: string },
+  useSuffix: boolean,
+): string {
+  if (!useSuffix) {
+    return `v${entry.newVersion}`;
+  }
   return `v${entry.newVersion}-${pkgName}`;
 }
 
-export function chooseRepresentativeTag(solution: Solution): string {
+export function chooseRepresentativeTag(
+  solution: Solution,
+  useSuffix: boolean,
+): string {
   for (const [pkgName, entry] of solution) {
     if (entry.impact) {
-      return tagFor(pkgName, entry);
+      return tagFor(pkgName, entry, useSuffix);
     }
   }
   process.stderr.write('Found no releasable packages in the plan');

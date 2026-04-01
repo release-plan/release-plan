@@ -1,6 +1,11 @@
 import { Octokit } from '@octokit/rest';
 import type { PublishPlugin } from '../../plugin-types.js';
-import { getRepo, createOctokit, chooseRepresentativeTag } from './shared.js';
+import {
+  getRepo,
+  createOctokit,
+  chooseRepresentativeTag,
+  shouldUseSuffixedTags,
+} from './shared.js';
 
 export interface GithubReleaseOptions {
   /** Mark the GitHub release as a pre-release */
@@ -43,7 +48,8 @@ export function githubRelease(options?: GithubReleaseOptions): PublishPlugin {
     },
 
     async publish(context, api) {
-      const tagName = chooseRepresentativeTag(context.solution);
+      const useSuffix = shouldUseSuffixedTags(context.solution);
+      const tagName = chooseRepresentativeTag(context.solution, useSuffix);
       const octokit = createOctokit();
 
       try {
