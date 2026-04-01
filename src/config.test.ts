@@ -1,4 +1,6 @@
 import { describe, it, expect, afterAll, beforeEach, afterEach } from 'vitest';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   defaultConfig,
   loadConfig,
@@ -15,14 +17,10 @@ import {
   readFileSync,
 } from 'fs';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 // Static fixture monorepo with per-package config overrides and a local plugin
-const fixtureRoot = join(
-  import.meta.dirname,
-  '..',
-  'fixtures',
-  'pnpm',
-  'custom-configs',
-);
+const fixtureRoot = join(__dirname, '..', 'fixtures', 'pnpm', 'custom-configs');
 const fixturePackages = {
   pkgA: join(fixtureRoot, 'packages', 'pkg-a'),
   pkgB: join(fixtureRoot, 'packages', 'pkg-b'),
@@ -30,7 +28,7 @@ const fixturePackages = {
 };
 
 // Compiled entry point — what 'release-plan' resolves to via the exports map.
-const entryPointDir = join(import.meta.dirname, '..', 'dist');
+const entryPointDir = join(__dirname, '..', 'dist');
 
 // For loadConfig unit tests that need different config file contents,
 // each test gets a unique directory so Node's import() cache never
@@ -341,7 +339,7 @@ export default { plugins: [fakeRegistryPublish({ failPrepare: 'missing token' })
     it('returns "default" when no config files exist', function () {
       // single-package fixture has no release-plan.config.mjs
       const singlePkgFixture = join(
-        import.meta.dirname,
+        __dirname,
         '..',
         'fixtures',
         'pnpm',
