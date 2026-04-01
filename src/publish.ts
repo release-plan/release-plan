@@ -26,38 +26,8 @@ async function hasCleanRepo(): Promise<boolean> {
   return result.stdout.length === 0;
 }
 
-function isMultiPackage(solution: Solution): boolean {
+function shouldUseSuffixedTags(solution: Solution): boolean {
   return solution.size > 1;
-}
-
-async function hasExistingSuffixedTags(
-  solution: Solution,
-  octokit: Octokit,
-): Promise<boolean> {
-  const [pkgName] = [...solution.keys()];
-  try {
-    const { owner, repo } = await getRepo();
-    const { data: tags } = await octokit.repos.listTags({
-      owner,
-      repo,
-      per_page: 100,
-    });
-    return tags.some((tag: { name: string }) =>
-      tag.name.endsWith(`-${pkgName}`),
-    );
-  } catch {
-    return false;
-  }
-}
-
-async function shouldUseSuffixedTags(
-  solution: Solution,
-  octokit: Octokit,
-): Promise<boolean> {
-  if (isMultiPackage(solution)) {
-    return true;
-  }
-  return hasExistingSuffixedTags(solution, octokit);
 }
 
 function tagFor(
@@ -406,7 +376,7 @@ To publish a release you should start from a clean repo. Run "npx release-plan p
     baseUrl,
   });
 
-  const useSuffix = await shouldUseSuffixedTags(solution, octokit);
+  const useSuffix = shouldUseSuffixedTags(solution);
   const representativeTag = chooseRepresentativeTag(solution, useSuffix);
 
   // from this point forward we don't stop if something goes wrong, we just keep
