@@ -2,6 +2,7 @@ import { parseChangeLogOrExit } from './change-parser.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { Solution } from './plan.js';
 import { planVersionBumps, saveSolution } from './plan.js';
+import { hashAllConfigs } from './config.js';
 import fsExtra from 'fs-extra';
 
 const { readJSONSync, writeJSONSync } = fsExtra;
@@ -73,6 +74,7 @@ export async function prepare(
   const solution = planVersionBumps(changes, singlePackage);
   updateVersions(solution);
   const description = updateChangelog(newChangelogContent, solution);
-  saveSolution(solution, description);
+  const configHash = hashAllConfigs();
+  saveSolution(solution, description, configHash);
   return solution;
 }

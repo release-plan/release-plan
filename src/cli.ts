@@ -33,44 +33,18 @@ yargs(process.argv.slice(2))
   )
   .command(
     'publish',
-    `Publishes an already-prepared released by tagging, pushing tags, creating GitHub release, and publishing to NPM.`,
+    `Publishes an already-prepared release by running publish plugins (tags, package publishing, GitHub release, etc). Configure plugins in release-plan.config.mjs.`,
     (yargs) =>
       yargs
         .option('skipRepoSafetyCheck', {
           type: 'boolean',
           description:
-            'Allows you to run "publish" even if there are uncommitted changes in your repo. Useful only for developing "publish" itself.',
-        })
-        .option('otp', {
-          type: 'string',
-          description: 'This is an OTP that will be passed to npm publish',
+            'Allows you to run "publish" even if there are uncommitted changes in your repo.',
         })
         .option('dryRun', {
           type: 'boolean',
           description:
-            'Run through the release, but log to stdout instead of tagging/pushing/publishing',
-        })
-        .option('publish-branch', {
-          type: 'string',
-          description:
-            '(pnpm) optionally pass on the --publish-branch if you need to publish from a branch other than main|master',
-        })
-        .option('tag', {
-          type: 'string',
-          description: 'pass --tag to npm publish command',
-        })
-        .option('provenance', {
-          type: 'boolean',
-          description: 'pass --provenance to the npm publish command',
-        })
-        .option('access', {
-          choices: ['public', 'restricted'],
-          description:
-            'Tells the registry whether the published package should be public or restricted.',
-        })
-        .option('github-prerelease', {
-          type: 'boolean',
-          description: `Allows you to set the GitHub release to a pre-release. This can be useful if you're using release-plan to release beta versions.`,
+            'Run through the release, but log to stdout instead of actually publishing.',
         }),
     async function (opts) {
       await publish(opts);
