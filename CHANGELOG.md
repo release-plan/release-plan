@@ -1,5 +1,23 @@
 # release-plan Changelog
 
+## Release (2026-04-01)
+
+* release-plan 0.18.0 (minor)
+
+#### :rocket: Enhancement
+* `release-plan`
+  * [#233](https://github.com/release-plan/release-plan/pull/233) feat: auto-detect tag format for single-package repos ([@LevelbossMike](https://github.com/LevelbossMike))
+
+#### :house: Internal
+* `release-plan`
+  * [#238](https://github.com/release-plan/release-plan/pull/238) add missing GITHUB_TOKEN to release-plan prepare ([@mansona](https://github.com/mansona))
+  * [#237](https://github.com/release-plan/release-plan/pull/237) add missing pnpm install to fix release ([@mansona](https://github.com/mansona))
+  * [#236](https://github.com/release-plan/release-plan/pull/236) update release plan Github CI to support OIDC ([@mansona](https://github.com/mansona))
+
+#### Committers: 2
+- Chris Manson ([@mansona](https://github.com/mansona))
+- Michael Klein ([@LevelbossMike](https://github.com/LevelbossMike))
+
 ## Release (2026-01-09)
 
 * release-plan 0.17.4 (patch)
