@@ -13,7 +13,7 @@ yargs(process.argv.slice(2))
   .scriptName('release')
   .command(
     'prepare',
-    `Edits the package.json and changelog files to prepare for release.`,
+    `Edits the package.json and changelog files to prepare for release. This generates the .release-plan.json file.`,
     (yargs) =>
       fromStdin(yargs).option('singlePackage', {
         type: 'string',
@@ -30,6 +30,12 @@ yargs(process.argv.slice(2))
       process.stdout.write(explain(solution));
       process.stdout.write(`\nSuccessfully prepared released\n`);
     },
+  )
+  .command(
+    'apply-release-plan',
+    'Applies the .release-plan.json file across your repo. This behavior is included in prepare, but this command is useful when manually editing the .release-plan, and you want to update the package.jsons and CHANGELOG.',
+    (yargs) => {},
+    async function (opts) {},
   )
   .command(
     'publish',
