@@ -246,10 +246,7 @@ export function explain(solution: Solution) {
   return output.join('\n');
 }
 
-export function planVersionBumps(
-  changed: ParsedChangelog,
-  singlePackage?: string,
-): Solution {
+export function planVersionBumps(changed: ParsedChangelog): Solution {
   const plan = new Plan();
   for (const section of changed.sections) {
     if ('unlabeled' in section) {
@@ -261,20 +258,12 @@ export function planVersionBumps(
       process.exit(-1);
     }
 
-    if (singlePackage) {
+    for (const pkg of section.packages) {
       plan.addConstraint(
-        singlePackage,
+        pkg,
         section.impact,
         `Appears in changelog section ${section.heading}`,
       );
-    } else {
-      for (const pkg of section.packages) {
-        plan.addConstraint(
-          pkg,
-          section.impact,
-          `Appears in changelog section ${section.heading}`,
-        );
-      }
     }
   }
 
