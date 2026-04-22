@@ -1,21 +1,14 @@
-import { describe, it, expect, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   defaultConfig,
   loadConfig,
   loadConfigForPackage,
-  hashAllConfigs,
 } from './config.js';
 import { join, relative } from 'path';
 import { tmpdir } from 'os';
-import {
-  mkdirSync,
-  mkdtempSync,
-  writeFileSync,
-  rmSync,
-  readFileSync,
-} from 'fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -325,144 +318,4 @@ export default { plugins: [fakeRegistryPublish({ failPrepare: 'missing token' })
     });
   });
 
-  describe('hashAllConfigs', function () {
-    let savedCwd: string;
-
-    beforeEach(() => {
-      savedCwd = process.cwd();
-    });
-
-    afterEach(() => {
-      process.chdir(savedCwd);
-    });
-
-    it('returns "default" when no config files exist', function () {
-      // single-package fixture has no release-plan.config.mjs
-      const singlePkgFixture = join(
-        __dirname,
-        '..',
-        'fixtures',
-        'pnpm',
-        'single-package',
-      );
-      process.chdir(singlePkgFixture);
-      expect(hashAllConfigs(singlePkgFixture)).toBe('default');
-    });
-
-    it('returns a hex hash when root config exists', function () {
-      process.chdir(fixtureRoot);
-      const hash = hashAllConfigs(fixtureRoot);
-      expect(hash).not.toBe('default');
-      // SHA-256 hex is 64 characters
-      expect(hash).toMatch(/^[0-9a-f]{64}$/);
-    });
-
-    it('returns the same hash on repeated calls', function () {
-      process.chdir(fixtureRoot);
-      const hash1 = hashAllConfigs(fixtureRoot);
-      const hash2 = hashAllConfigs(fixtureRoot);
-      expect(hash1).toBe(hash2);
-    });
-
-    it('includes package-level config files in the hash', function () {
-      // custom-configs has root config + pkg-a config + pkg-b config
-      // We verify the hash changes if we use a fixture without package configs.
-      // Compare with a temp workspace that has only a root config with identical content.
-      process.chdir(fixtureRoot);
-      const monoHash = hashAllConfigs(fixtureRoot);
-
-      // Now create a single-package workspace with just the root config (same content)
-      const tmpDir = mkdtempSync(join(tmpdir(), 'hash-test-'));
-      try {
-        writeFileSync(
-          join(tmpDir, 'package.json'),
-          JSON.stringify({ name: 'hash-test', version: '1.0.0' }),
-        );
-        writeFileSync(join(tmpDir, 'pnpm-workspace.yaml'), 'packages: []\n');
-        // Copy root config content exactly
-        const rootConfigContent = readFileSync(
-          join(fixtureRoot, 'release-plan.config.mjs'),
-          'utf8',
-        );
-        writeFileSync(
-          join(tmpDir, 'release-plan.config.mjs'),
-          rootConfigContent,
-        );
-
-        process.chdir(tmpDir);
-        const singleHash = hashAllConfigs(tmpDir);
-
-        // Hashes differ because the monorepo includes package-level configs
-        expect(monoHash).not.toBe(singleHash);
-      } finally {
-        rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('changes when a config file is modified', function () {
-      const tmpDir = mkdtempSync(join(tmpdir(), 'hash-mod-test-'));
-      try {
-        writeFileSync(
-          join(tmpDir, 'package.json'),
-          JSON.stringify({ name: 'hash-mod-test', version: '1.0.0' }),
-        );
-        writeFileSync(join(tmpDir, 'pnpm-workspace.yaml'), 'packages: []\n');
-        writeFileSync(
-          join(tmpDir, 'release-plan.config.mjs'),
-          `export default { plugins: [] };`,
-        );
-
-        process.chdir(tmpDir);
-        const hash1 = hashAllConfigs(tmpDir);
-
-        // Modify the config
-        writeFileSync(
-          join(tmpDir, 'release-plan.config.mjs'),
-          `export default { plugins: [{ name: 'new', publish: async () => {} }] };`,
-        );
-        const hash2 = hashAllConfigs(tmpDir);
-
-        expect(hash1).not.toBe(hash2);
-      } finally {
-        rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-
-    it('changes when a package-level config is added', function () {
-      const tmpDir = mkdtempSync(join(tmpdir(), 'hash-pkg-test-'));
-      try {
-        writeFileSync(
-          join(tmpDir, 'package.json'),
-          JSON.stringify({ private: true }),
-        );
-        writeFileSync(
-          join(tmpDir, 'pnpm-workspace.yaml'),
-          'packages:\n  - packages/*\n',
-        );
-        mkdirSync(join(tmpDir, 'packages', 'my-pkg'), { recursive: true });
-        writeFileSync(
-          join(tmpDir, 'packages', 'my-pkg', 'package.json'),
-          JSON.stringify({ name: 'my-pkg', version: '1.0.0' }),
-        );
-        writeFileSync(
-          join(tmpDir, 'release-plan.config.mjs'),
-          `export default { plugins: [] };`,
-        );
-
-        process.chdir(tmpDir);
-        const hashBefore = hashAllConfigs(tmpDir);
-
-        // Add a package-level config
-        writeFileSync(
-          join(tmpDir, 'packages', 'my-pkg', 'release-plan.config.mjs'),
-          `export default { plugins: [] };`,
-        );
-        const hashAfter = hashAllConfigs(tmpDir);
-
-        expect(hashBefore).not.toBe(hashAfter);
-      } finally {
-        rmSync(tmpDir, { recursive: true, force: true });
-      }
-    });
-  });
 });

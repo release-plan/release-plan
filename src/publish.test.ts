@@ -27,20 +27,17 @@ vi.mock('execa', (importOriginal) => {
   };
 });
 
-// Mock loadConfig and hashAllConfigs to inject test plugins/hashes
+// Mock loadConfig to inject test plugins
 const mockPlugins: PublishPlugin[] = [];
-let mockCurrentHash = 'default';
 vi.mock('./config.js', () => {
   return {
     loadConfig: vi.fn(async () => ({
       plugins: mockPlugins,
     })),
-    hashAllConfigs: vi.fn(() => mockCurrentHash),
   };
 });
 
 // Mock loadSolution to return test data
-let mockConfigHash: string | undefined = undefined;
 vi.mock('./plan.js', () => {
   return {
     loadSolution: vi.fn(() => ({
@@ -58,7 +55,6 @@ vi.mock('./plan.js', () => {
         ],
       ]),
       description: 'test release',
-      configHash: mockConfigHash,
     })),
   };
 });
@@ -77,8 +73,6 @@ describe('publish orchestrator', function () {
 
   beforeEach(() => {
     mockPlugins.length = 0;
-    mockCurrentHash = 'default';
-    mockConfigHash = undefined;
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
       throw new ExitError(code ?? -1);
     });
@@ -346,72 +340,4 @@ describe('publish orchestrator', function () {
     expect(err.name).toBe('UserError');
   });
 
-  it('aborts when config hash has changed since plan was created', async function () {
-    mockConfigHash = 'abc123';
-    mockCurrentHash = 'different456';
-
-    mockPlugins.push({
-      name: 'should-not-run',
-      async publish() {
-        throw new Error('Plugin should not have been called');
-      },
-    });
-
-    await expect(
-      publish({ skipRepoSafetyCheck: true, dryRun: true }),
-    ).rejects.toThrow(ExitError);
-
-    expect(exitSpy).toHaveBeenCalledWith(-1);
-
-    const stderrOutput = vi
-      .mocked(process.stderr.write)
-      .mock.calls.map((c) => c[0])
-      .join('');
-    expect(stderrOutput).toContain('config has changed');
-    expect(stderrOutput).toContain('release-plan prepare');
-  });
-
-  it('proceeds when config hash matches', async function () {
-    const stdoutSpy = vi
-      .spyOn(process.stdout, 'write')
-      .mockImplementation(() => true);
-
-    mockConfigHash = 'samehash';
-    mockCurrentHash = 'samehash';
-
-    mockPlugins.push({
-      name: 'happy-plugin',
-      async publish() {
-        // no issues
-      },
-    });
-
-    await publish({ skipRepoSafetyCheck: true, dryRun: true });
-
-    expect(exitSpy).not.toHaveBeenCalled();
-
-    stdoutSpy.mockRestore();
-  });
-
-  it('skips hash check when plan has no configHash (backwards compat)', async function () {
-    const stdoutSpy = vi
-      .spyOn(process.stdout, 'write')
-      .mockImplementation(() => true);
-
-    // mockConfigHash defaults to undefined via beforeEach
-    mockCurrentHash = 'anyhashvalue';
-
-    mockPlugins.push({
-      name: 'happy-plugin',
-      async publish() {
-        // no issues
-      },
-    });
-
-    await publish({ skipRepoSafetyCheck: true, dryRun: true });
-
-    expect(exitSpy).not.toHaveBeenCalled();
-
-    stdoutSpy.mockRestore();
-  });
 });

@@ -288,13 +288,11 @@ function solutionFile(): string {
 export function saveSolution(
   solution: Solution,
   description: string,
-  configHash: string,
 ): void {
   writeJSONSync(
     solutionFile(),
     {
       version: 1,
-      configHash,
       solution: Object.fromEntries(solution),
       description,
     },
@@ -305,7 +303,6 @@ export function saveSolution(
 export function loadSolution(): {
   solution: Solution;
   description: string;
-  configHash: string | undefined;
 } {
   try {
     if (!existsSync(solutionFile())) {
@@ -323,7 +320,6 @@ export function loadSolution(): {
     return {
       solution: new Map(Object.entries(json.solution)),
       description: json.description,
-      configHash: json.configHash,
     };
   } catch (err) {
     process.stderr.write(

@@ -1,6 +1,6 @@
 import { execa } from 'execa';
 import { loadSolution } from './plan.js';
-import { loadConfig, hashAllConfigs } from './config.js';
+import { loadConfig } from './config.js';
 import { UserError } from './plugin-types.js';
 import type { PluginAPI, PublishContext } from './plugin-types.js';
 
@@ -40,21 +40,9 @@ To publish a release you should start from a clean repo. Run "npx release-plan p
     }
   }
 
-  const { solution, description, configHash } = loadSolution();
+  const { solution, description } = loadSolution();
 
   const config = await loadConfig();
-
-  // Check if the config has changed since the plan was created.
-  // If so, the plan may be stale and should be regenerated.
-  if (configHash !== undefined) {
-    const currentHash = hashAllConfigs();
-    if (currentHash !== configHash) {
-      process.stderr.write(
-        `The release-plan config has changed since the plan was created.\nPlease re-run "release-plan prepare" to regenerate the plan.\n`,
-      );
-      process.exit(-1);
-    }
-  }
 
   const context: PublishContext = {
     solution,
