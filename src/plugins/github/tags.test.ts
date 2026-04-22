@@ -147,7 +147,7 @@ describe('github-tags plugin', function () {
     expect(api.infos[0]).toContain('has already been pushed up');
   });
 
-  it('prepare throws UserError when GITHUB_AUTH is missing', async function () {
+  it('validate throws UserError when GITHUB_AUTH is missing', async function () {
     const plugin = githubTags();
     const api = makeApi();
     const solution = makeSolution();
@@ -155,7 +155,7 @@ describe('github-tags plugin', function () {
     delete process.env.GITHUB_AUTH;
 
     try {
-      await expect(plugin.prepare!(makeContext(solution), api)).rejects.toThrow(
+      await expect(plugin.validate!(makeContext(solution), api)).rejects.toThrow(
         api.UserError,
       );
     } finally {

@@ -131,7 +131,7 @@ describe('github-release plugin', function () {
     expect(api.infos[0]).toContain('--dryRun active');
   });
 
-  it('prepare throws UserError when GITHUB_AUTH is missing', async function () {
+  it('validate throws UserError when GITHUB_AUTH is missing', async function () {
     const plugin = githubRelease();
     const api = makeApi();
     const solution = makeSolution();
@@ -139,7 +139,7 @@ describe('github-release plugin', function () {
     delete process.env.GITHUB_AUTH;
 
     try {
-      await expect(plugin.prepare!(makeContext(solution), api)).rejects.toThrow(
+      await expect(plugin.validate!(makeContext(solution), api)).rejects.toThrow(
         api.UserError,
       );
     } finally {

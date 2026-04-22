@@ -63,12 +63,12 @@ To publish a release you should start from a clean repo. Run "npx release-plan p
     };
   }
 
-  // Phase 1: PREPARE -- run all plugins' prepare() checks.
+  // Phase 1: VALIDATE -- run all plugins' validate() checks.
   // If any plugin throws, the entire publish is aborted.
   for (const plugin of config.plugins) {
-    if (plugin.prepare) {
+    if (plugin.validate) {
       try {
-        await plugin.prepare(context, apiForPlugin(plugin.name));
+        await plugin.validate(context, apiForPlugin(plugin.name));
       } catch (err) {
         if (err instanceof UserError) {
           process.stderr.write(`\n[${plugin.name}] ${err.message}\n`);
@@ -80,10 +80,22 @@ To publish a release you should start from a clean repo. Run "npx release-plan p
     }
   }
 
-  // Phase 2: PUBLISH -- run all plugins' publish() in order.
+  // Phase 2: SHOULD_PUBLISH -- ask each plugin whether it wants to run.
+  // Phase 3: PUBLISH -- run publish() for plugins that opted in.
   for (const plugin of config.plugins) {
+    const api = apiForPlugin(plugin.name);
+
+    let shouldRun = true;
+    if (plugin.shouldPublish) {
+      shouldRun = await plugin.shouldPublish(context, api);
+    }
+
+    if (!shouldRun) {
+      continue;
+    }
+
     try {
-      await plugin.publish(context, apiForPlugin(plugin.name));
+      await plugin.publish(context, api);
     } catch (err) {
       reporter.reportFailure(
         `[${plugin.name}] failed unexpectedly: ${err.message}\n`,

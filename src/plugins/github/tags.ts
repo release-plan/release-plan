@@ -36,7 +36,7 @@ export function githubTags(): PublishPlugin {
   return {
     name: 'github-tags',
 
-    async prepare(_context, api) {
+    async validate(_context, api) {
       if (!process.env.GITHUB_AUTH) {
         throw new api.UserError(
           'GITHUB_AUTH environment variable is required for creating tags',

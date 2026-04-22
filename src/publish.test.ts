@@ -112,14 +112,14 @@ describe('publish orchestrator', function () {
     expect(order).toEqual(['first', 'second', 'third']);
   });
 
-  it('runs prepare phase before publish phase', async function () {
+  it('runs validate phase before publish phase', async function () {
     const order: string[] = [];
 
     mockPlugins.push(
       {
         name: 'plugin-a',
-        async prepare() {
-          order.push('a-prepare');
+        async validate() {
+          order.push('a-validate');
         },
         async publish() {
           order.push('a-publish');
@@ -127,8 +127,8 @@ describe('publish orchestrator', function () {
       },
       {
         name: 'plugin-b',
-        async prepare() {
-          order.push('b-prepare');
+        async validate() {
+          order.push('b-validate');
         },
         async publish() {
           order.push('b-publish');
@@ -138,16 +138,16 @@ describe('publish orchestrator', function () {
 
     await publish({ skipRepoSafetyCheck: true, dryRun: true });
 
-    expect(order).toEqual(['a-prepare', 'b-prepare', 'a-publish', 'b-publish']);
+    expect(order).toEqual(['a-validate', 'b-validate', 'a-publish', 'b-publish']);
   });
 
-  it('aborts on UserError from prepare phase', async function () {
+  it('aborts on UserError from validate phase', async function () {
     const publishCalled: string[] = [];
 
     mockPlugins.push(
       {
         name: 'failing-plugin',
-        async prepare(_context, api) {
+        async validate(_context, api) {
           throw new api.UserError('Missing credentials');
         },
         async publish() {
@@ -177,12 +177,12 @@ describe('publish orchestrator', function () {
     expect(stderrOutput).toContain('Missing credentials');
   });
 
-  it('aborts on generic error from prepare phase', async function () {
+  it('aborts on generic error from validate phase', async function () {
     const publishCalled: string[] = [];
 
     mockPlugins.push({
       name: 'broken-plugin',
-      async prepare() {
+      async validate() {
         throw new Error('Unexpected error');
       },
       async publish() {
@@ -196,6 +196,74 @@ describe('publish orchestrator', function () {
 
     expect(exitSpy).toHaveBeenCalledWith(-1);
     expect(publishCalled).toEqual([]);
+  });
+
+  it('skips publish when shouldPublish returns false', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push(
+      {
+        name: 'skip-me',
+        async shouldPublish() {
+          return false;
+        },
+        async publish() {
+          publishCalled.push('skip-me');
+        },
+      },
+      {
+        name: 'run-me',
+        async publish() {
+          publishCalled.push('run-me');
+        },
+      },
+    );
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(publishCalled).toEqual(['run-me']);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('runs publish when shouldPublish returns true', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push({
+      name: 'run-me',
+      async shouldPublish() {
+        return true;
+      },
+      async publish() {
+        publishCalled.push('run-me');
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(publishCalled).toEqual(['run-me']);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('runs all three hooks in order: validate, shouldPublish, publish', async function () {
+    const order: string[] = [];
+
+    mockPlugins.push({
+      name: 'full-plugin',
+      async validate() {
+        order.push('validate');
+      },
+      async shouldPublish() {
+        order.push('shouldPublish');
+        return true;
+      },
+      async publish() {
+        order.push('publish');
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(order).toEqual(['validate', 'shouldPublish', 'publish']);
   });
 
   it('catches thrown errors in publish phase without stopping other plugins', async function () {

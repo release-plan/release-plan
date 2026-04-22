@@ -39,13 +39,22 @@ export interface PublishPlugin {
   /**
    * Phase 1: Early precondition check. Runs before any publishing starts.
    *
-   * If any plugin's prepare() throws, the entire publish is aborted.
+   * If any plugin's validate() throws, the entire publish is aborted.
    * Throw `api.UserError` for clean messages, or any Error for stack traces.
    */
-  prepare?(context: PublishContext, api: PluginAPI): Promise<void>;
+  validate?(context: PublishContext, api: PluginAPI): Promise<void>;
 
   /**
-   * Phase 2: Do the actual publishing work.
+   * Phase 2: Decide whether this plugin's publish() should run.
+   *
+   * Return `true` to proceed, `false` to skip publish() for this plugin.
+   * If absent, publish() always runs.
+   */
+  shouldPublish?(context: PublishContext, api: PluginAPI): Promise<boolean>;
+
+  /**
+   * Phase 3: Do the actual publishing work. Only called when shouldPublish()
+   * returns `true` (or is absent).
    *
    * Use `api.reportFailure()` for non-fatal errors (other plugins continue).
    * Core wraps this in try/catch so a badly-behaved plugin that throws
@@ -60,7 +69,7 @@ export interface ReleasePlanConfig {
 
 /**
  * Typed error for clean user-facing messages.
- * When thrown during a plugin's prepare() phase, the message is displayed
+ * When thrown during a plugin's validate() phase, the message is displayed
  * without a stack trace and the publish is aborted.
  */
 export class UserError extends Error {

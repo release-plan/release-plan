@@ -173,11 +173,11 @@ export default defineConfig({
       expect(config.plugins[0].name).toBe('fake-registry-publish');
     });
 
-    it('loaded third-party plugin has callable prepare and publish', async function () {
+    it('loaded third-party plugin has callable validate and publish', async function () {
       const config = await loadConfig(fixtureRoot);
       const plugin = config.plugins[0];
 
-      expect(typeof plugin.prepare).toBe('function');
+      expect(typeof plugin.validate).toBe('function');
       expect(typeof plugin.publish).toBe('function');
     });
 
@@ -201,19 +201,19 @@ export default defineConfig({
         info: () => {},
       };
 
-      await plugin.prepare(fakeContext, fakeApi);
+      await plugin.validate(fakeContext, fakeApi);
       await plugin.publish(fakeContext, fakeApi);
 
       expect(plugin.calls).toHaveLength(2);
-      expect(plugin.calls[0].phase).toBe('prepare');
+      expect(plugin.calls[0].phase).toBe('validate');
       expect(plugin.calls[0].context).toBe(fakeContext);
       expect(plugin.calls[0].api).toBe(fakeApi);
       expect(plugin.calls[1].phase).toBe('publish');
     });
 
-    it('third-party plugin can use api.UserError to abort prepare', async function () {
+    it('third-party plugin can use api.UserError to abort validate', async function () {
       // pkg-b's config uses fakeRegistryPublish({ failPublish: 'pkg-b-error' })
-      // but we need failPrepare — use a uniqueDir for this specific scenario
+      // but we need failValidate — use a uniqueDir for this specific scenario
       const dir = uniqueDir();
       const pluginPath = relative(
         dir,
@@ -222,7 +222,7 @@ export default defineConfig({
       writeConfig(
         dir,
         `import { fakeRegistryPublish } from './${pluginPath}';
-export default { plugins: [fakeRegistryPublish({ failPrepare: 'missing token' })] };`,
+export default { plugins: [fakeRegistryPublish({ failValidate: 'missing token' })] };`,
       );
 
       const config = await loadConfig(dir);
@@ -246,7 +246,7 @@ export default { plugins: [fakeRegistryPublish({ failPrepare: 'missing token' })
         dryRun: false,
       };
 
-      await expect(plugin.prepare!(fakeContext, fakeApi)).rejects.toThrow(
+      await expect(plugin.validate!(fakeContext, fakeApi)).rejects.toThrow(
         'missing token',
       );
     });
