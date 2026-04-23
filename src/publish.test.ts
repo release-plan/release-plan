@@ -1,14 +1,18 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
-  npmPublish,
-  publish,
-  createGithubRelease,
-  IssueReporter,
-} from './publish.js';
-import { Solution } from './plan.js';
-import * as planModule from './plan.js';
-import { getPackages } from './interdep.js';
-import { execa } from 'execa';
+  describe,
+  it,
+  expect,
+  vi,
+  afterEach,
+  beforeEach,
+  type MockInstance,
+} from 'vitest';
+import { publish } from './publish.js';
+import type {
+  PublishPlugin,
+  PluginAPI,
+  PluginContext,
+} from './plugin-types.js';
 
 vi.mock('execa', (importOriginal) => {
   return {
@@ -23,470 +27,425 @@ vi.mock('execa', (importOriginal) => {
   };
 });
 
-// we aren't currently using this so we can just ignore for now
-const reporter = new IssueReporter();
-
-const octokit = vi.fn();
-vi.mock('@octokit/rest', () => {
+// Mock loadConfigForPackage to inject test plugins per package
+const mockPlugins: PublishPlugin[] = [];
+vi.mock('./config.js', () => {
   return {
-    Octokit: function (...args: any) {
-      octokit(...args);
-      return {
-        repos: {
-          getReleaseByTag() {
-            const err = new Error() as any;
-            err.status = 404;
-            throw err;
-          },
-          createRelease: vi.fn(),
-        },
-        git: {
-          createRef: vi.fn(),
-          getRef() {
-            const err = new Error() as any;
-            err.status = 404;
-            throw err;
-          },
-        },
-      };
-    },
+    loadConfigForPackage: vi.fn(async () => ({
+      plugins: mockPlugins,
+    })),
   };
 });
 
-vi.stubEnv('GITHUB_SHA', 'test-sha');
-
-describe('publish', function () {
-  it('publish support custom base api url', function () {
-    process.env.GITHUB_API_URL = 'https://api.custombase.com';
-    process.env.GITHUB_AUTH = 'auth';
-    publish({
-      skipRepoSafetyCheck: true,
-      dryRun: true,
-    });
-    expect(octokit.mock.calls.length).toBe(1);
-    expect(octokit.mock.lastCall).toMatchInlineSnapshot(`
-      [
-        {
-          "auth": "auth",
-          "baseUrl": "https://api.custombase.com",
-        },
-      ]
-    `);
-  });
-
-  it('publish support custom base domain', function () {
-    vi.clearAllMocks();
-    delete process.env.GITHUB_API_URL;
-    process.env.GITHUB_DOMAIN = 'custombase.com';
-    process.env.GITHUB_AUTH = 'auth';
-    publish({
-      skipRepoSafetyCheck: true,
-      dryRun: true,
-    });
-    expect(octokit.mock.calls.length).toBe(1);
-    expect(octokit.mock.lastCall).toMatchInlineSnapshot(`
-      [
-        {
-          "auth": "auth",
-          "baseUrl": "https://api.custombase.com",
-        },
-      ]
-    `);
-  });
-
-  describe('tag format', function () {
-    it('creates tags without package name suffix for single-package repos', async function () {
-      vi.spyOn(planModule, 'loadSolution').mockReturnValue({
-        solution: new Map([
-          [
-            '@scope/my-package',
-            {
-              oldVersion: '1.0.0',
-              newVersion: '1.1.0',
-              impact: 'minor' as const,
-              constraints: [],
-              tagName: 'latest',
-              pkgJSONPath: './package.json',
-            },
-          ],
-        ]) as Solution,
-        description: 'test release',
-      });
-      process.env.GITHUB_API_URL = 'https://api.github.com';
-      process.env.GITHUB_AUTH = 'auth';
-
-      const consoleSpy = vi.spyOn(process.stdout, 'write');
-
-      await publish({
-        skipRepoSafetyCheck: true,
-        dryRun: true,
-      });
-
-      const output = consoleSpy.mock.calls.map((c) => c[0]).join('');
-      expect(output).toContain('git tag v1.1.0`');
-      expect(output).not.toContain('git tag v1.1.0-@scope/my-package');
-    });
-
-    it('creates tags with package name suffix for multi-package repos', async function () {
-      vi.spyOn(planModule, 'loadSolution').mockReturnValue({
-        solution: new Map([
-          [
-            '@scope/pkg-a',
-            {
-              oldVersion: '1.0.0',
-              newVersion: '1.1.0',
-              impact: 'minor' as const,
-              constraints: [],
-              tagName: 'latest',
-              pkgJSONPath: './package.json',
-            },
-          ],
-          [
-            '@scope/pkg-b',
-            {
-              oldVersion: '2.0.0',
-              newVersion: '2.1.0',
-              impact: 'minor' as const,
-              constraints: [],
-              tagName: 'latest',
-              pkgJSONPath: './package.json',
-            },
-          ],
-        ]) as Solution,
-        description: 'test release',
-      });
-      process.env.GITHUB_API_URL = 'https://api.github.com';
-      process.env.GITHUB_AUTH = 'auth';
-
-      const consoleSpy = vi.spyOn(process.stdout, 'write');
-
-      await publish({
-        skipRepoSafetyCheck: true,
-        dryRun: true,
-      });
-
-      const output = consoleSpy.mock.calls.map((c) => c[0]).join('');
-      expect(output).toContain('git tag v1.1.0-@scope/pkg-a');
-      expect(output).toContain('git tag v2.1.0-@scope/pkg-b');
-    });
-  });
-
-  describe('npmPublish', function () {
-    let solution: Solution;
-
-    beforeEach(() => {
-      solution = new Map();
-      solution.set('thingy', {
-        oldVersion: '3',
-        newVersion: '4',
-        impact: 'minor',
-        constraints: [],
-        tagName: 'latest',
-        pkgJSONPath: './package.json',
-      });
-    });
-
-    afterEach(() => {
-      vi.resetAllMocks();
-    });
-
-    it('adds the correct args with no options', async function () {
-      await npmPublish(solution, reporter, {}, 'fake-npm');
-
-      expect(execa).toBeCalledWith('fake-npm', ['publish', '--tag=latest'], {
-        cwd: '.',
-        stderr: 'inherit',
-        stdout: 'inherit',
-      });
-    });
-
-    it('adds access if passed by options', async function () {
-      await npmPublish(
-        solution,
-        reporter,
-        { access: 'restricted' },
-        'fake-npm',
-      );
-
-      expect(execa).toBeCalledWith(
-        'fake-npm',
-        ['publish', '--access=restricted', '--tag=latest'],
-        {
-          cwd: '.',
-          stderr: 'inherit',
-          stdout: 'inherit',
-        },
-      );
-    });
-
-    it('adds otp if passed by options', async function () {
-      await npmPublish(
-        solution,
-        reporter,
-        {
-          otp: '12345',
-        },
-        'fake-npm',
-      );
-
-      expect(execa).toBeCalledWith(
-        'fake-npm',
-        ['publish', '--otp=12345', '--tag=latest'],
-        {
-          cwd: '.',
-          stderr: 'inherit',
-          stdout: 'inherit',
-        },
-      );
-    });
-
-    it('adds publish-branch if passed by options', async function () {
-      await npmPublish(
-        solution,
-        reporter,
-        {
-          publishBranch: 'best-branch',
-        },
-        'fake-pnpm',
-      );
-
-      expect(execa).toBeCalledWith(
-        'fake-pnpm',
-        ['publish', '--publish-branch=best-branch', '--tag=latest'],
-        {
-          cwd: '.',
-          stderr: 'inherit',
-          stdout: 'inherit',
-        },
-      );
-    });
-
-    it('throws an error if --tag is passed on the command line', async function () {
-      expect(
-        npmPublish(
-          solution,
-          reporter,
-          {
-            tag: 'face',
-          },
-          'fake-npm',
-        ),
-      ).rejects.toThrow(
-        `The '--tag' option has been removed. If you want to publish a package with a tag other than latest please set the 'release-plan.publishTag' setting in your package.json.`,
-      );
-    });
-
-    it('adds tag if passed set in the solution', async function () {
-      solution.set('thingy', {
-        oldVersion: '3',
-        newVersion: '4',
-        impact: 'minor',
-        constraints: [],
-        tagName: 'best-tag',
-        pkgJSONPath: './package.json',
-      });
-
-      await npmPublish(solution, reporter, {}, 'fake-npm');
-
-      expect(execa).toBeCalledWith('fake-npm', ['publish', '--tag=best-tag'], {
-        cwd: '.',
-        stderr: 'inherit',
-        stdout: 'inherit',
-      });
-    });
-
-    it('adds dry-run if passed by options', async function () {
-      await npmPublish(
-        solution,
-        reporter,
-        {
-          dryRun: true,
-        },
-        'fake-npm',
-      );
-
-      expect(execa).toBeCalledWith(
-        'fake-npm',
-        ['publish', '--dry-run', '--tag=latest'],
-        {
-          cwd: '.',
-          stderr: 'inherit',
-          stdout: 'inherit',
-        },
-      );
-    });
-
-    it('adds provenance if passed by options', async function () {
-      await npmPublish(
-        solution,
-        reporter,
-        {
-          provenance: true,
-        },
-        'fake-npm',
-      );
-
-      expect(execa).toBeCalledWith(
-        'fake-npm',
-        ['publish', '--provenance', '--tag=latest'],
-        {
-          cwd: '.',
-          stderr: 'inherit',
-          stdout: 'inherit',
-        },
-      );
-    });
-
-    it('warns that a version exists if we are trying to release', async function () {
-      const consoleSpy = vi.spyOn(process.stdout, 'write');
-
-      await npmPublish(
-        new Map([
-          [
-            'release-plan',
-            {
-              oldVersion: '0.8.1',
-              newVersion: '0.9.0',
-              impact: 'minor',
-              pkgJSONPath: './package.json',
-            },
-          ],
-        ]) as Solution,
-        reporter,
-        {},
-        'face',
-      );
-
-      expect(consoleSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
-        "
-         ℹ️ release-plan has already been published @ version 0.9.0. Skipping publish;"
-      `);
-      expect(execa).not.toHaveBeenCalled();
-    });
-
-    it('skips publishing if npmSkipPublish is specified in package.json', async function () {
-      const consoleSpy = vi.spyOn(process.stdout, 'write');
-      const packages = getPackages('./fixtures/pnpm/star-package');
-      await npmPublish(
-        new Map([
-          [
-            'do-not-publish',
-            {
-              oldVersion: '0.8.1',
-              newVersion: '0.9.0',
-              impact: 'minor',
-              constraints: [],
-              pkgJSONPath: packages.get('do-not-publish')?.pkgJSONPath,
-              tagName: 'latest',
-            },
-          ],
-          [
-            'star-package',
-            {
-              oldVersion: '0.8.1',
-              newVersion: '0.9.0',
-              impact: 'minor',
-              constraints: [],
-              pkgJSONPath: packages.get('star-package')?.pkgJSONPath,
-              tagName: 'latest',
-            },
-          ],
-        ]) as Solution,
-        reporter,
-        {
-          dryRun: true,
-        },
-        'fake-npm',
-      );
-
-      expect(consoleSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
-        "
-         ℹ️ --dryRun active. Adding \`--dry-run\` flag to \`fake-npm publish\` for star-package, which would publish version 0.9.0
-        "
-      `);
-
-      expect(execa).toHaveBeenCalledOnce();
-      expect(execa).toBeCalledWith(
-        'fake-npm',
-        ['publish', '--dry-run', '--tag=latest'],
-        {
-          cwd: './fixtures/pnpm/star-package',
-          stderr: 'inherit',
-          stdout: 'inherit',
-        },
-      );
-    });
-  });
-
-  describe('createGithubRelease', function () {
-    it('calls octokit create Release with correct params', async function () {
-      const octokit = {
-        repos: {
-          getReleaseByTag() {
-            const err = new Error() as any;
-            err.status = 404;
-            throw err;
-          },
-          createRelease: vi.fn(),
-        },
-      };
-      await createGithubRelease(
-        octokit as any,
-        'new release',
-        'v1.0.0-release-plan',
-        reporter,
-        {},
-      );
-      expect(octokit.repos.createRelease.mock.calls.length).toBe(1);
-      expect(octokit.repos.createRelease.mock.lastCall).toMatchInlineSnapshot(`
+// Mock loadSolution to return test data with one package with impact
+vi.mock('./plan.js', () => {
+  return {
+    loadSolution: vi.fn(() => ({
+      solution: new Map([
         [
+          'test-pkg',
           {
-            "body": "new release",
-            "name": "v1.0.0-release-plan",
-            "owner": "release-plan",
-            "prerelease": false,
-            "repo": "release-plan",
-            "tag_name": "v1.0.0-release-plan",
-            "target_commitish": "test-sha",
+            oldVersion: '1.0.0',
+            newVersion: '2.0.0',
+            impact: 'major',
+            constraints: [],
+            tagName: 'latest',
+            pkgJSONPath: './package.json',
           },
-        ]
-      `);
+        ],
+      ]),
+      description: 'test release',
+    })),
+  };
+});
+
+// Sentinel error thrown by our process.exit mock so execution actually halts
+class ExitError extends Error {
+  code: number;
+  constructor(code: number) {
+    super(`process.exit(${code})`);
+    this.code = code;
+  }
+}
+
+describe('publish orchestrator', function () {
+  let exitSpy: MockInstance;
+
+  beforeEach(() => {
+    mockPlugins.length = 0;
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+      throw new ExitError(code ?? -1);
+    });
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('runs plugins in config order', async function () {
+    const order: string[] = [];
+
+    mockPlugins.push(
+      {
+        name: 'first',
+        async publish() {
+          order.push('first');
+        },
+      },
+      {
+        name: 'second',
+        async publish() {
+          order.push('second');
+        },
+      },
+      {
+        name: 'third',
+        async publish() {
+          order.push('third');
+        },
+      },
+    );
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(order).toEqual(['first', 'second', 'third']);
+  });
+
+  it('runs validate phase before publish phase', async function () {
+    const order: string[] = [];
+
+    mockPlugins.push(
+      {
+        name: 'plugin-a',
+        async validate() {
+          order.push('a-validate');
+        },
+        async publish() {
+          order.push('a-publish');
+        },
+      },
+      {
+        name: 'plugin-b',
+        async validate() {
+          order.push('b-validate');
+        },
+        async publish() {
+          order.push('b-publish');
+        },
+      },
+    );
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(order).toEqual([
+      'a-validate',
+      'b-validate',
+      'a-publish',
+      'b-publish',
+    ]);
+  });
+
+  it('aborts on ReleaseError from validate phase', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push(
+      {
+        name: 'failing-plugin',
+        async validate() {
+          this.releaseError('Missing credentials');
+        },
+        async publish() {
+          publishCalled.push('failing-plugin');
+        },
+      },
+      {
+        name: 'other-plugin',
+        async publish() {
+          publishCalled.push('other-plugin');
+        },
+      },
+    );
+
+    await expect(
+      publish({ skipRepoSafetyCheck: true, dryRun: true }),
+    ).rejects.toThrow(ExitError);
+
+    expect(exitSpy).toHaveBeenCalledWith(-1);
+    expect(publishCalled).toEqual([]);
+    const stderrOutput = vi
+      .mocked(process.stderr.write)
+      .mock.calls.map((c) => c[0])
+      .join('');
+    expect(stderrOutput).toContain('[failing-plugin]');
+    expect(stderrOutput).toContain('Missing credentials');
+  });
+
+  it('aborts on generic error from validate phase', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push({
+      name: 'broken-plugin',
+      async validate() {
+        throw new Error('Unexpected error');
+      },
+      async publish() {
+        publishCalled.push('broken-plugin');
+      },
     });
 
-    it('sets prerelease to true when githubPrerelease is set to true', async function () {
-      const octokit = {
-        repos: {
-          getReleaseByTag() {
-            const err = new Error() as any;
-            err.status = 404;
-            throw err;
-          },
-          createRelease: vi.fn(),
+    await expect(
+      publish({ skipRepoSafetyCheck: true, dryRun: true }),
+    ).rejects.toThrow(ExitError);
+
+    expect(exitSpy).toHaveBeenCalledWith(-1);
+    expect(publishCalled).toEqual([]);
+  });
+
+  it('skips publish when shouldPublish returns false', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push(
+      {
+        name: 'skip-me',
+        async shouldPublish() {
+          return false;
         },
-      };
-      await createGithubRelease(
-        octokit as any,
-        'new release',
-        'v1.0.0-release-plan',
-        reporter,
-        {
-          githubPrerelease: true,
+        async publish() {
+          publishCalled.push('skip-me');
         },
-      );
-      expect(octokit.repos.createRelease.mock.calls.length).toBe(1);
-      expect(octokit.repos.createRelease.mock.lastCall).toMatchInlineSnapshot(`
-        [
-          {
-            "body": "new release",
-            "name": "v1.0.0-release-plan",
-            "owner": "release-plan",
-            "prerelease": true,
-            "repo": "release-plan",
-            "tag_name": "v1.0.0-release-plan",
-            "target_commitish": "test-sha",
-          },
-        ]
-      `);
+      },
+      {
+        name: 'run-me',
+        async publish() {
+          publishCalled.push('run-me');
+        },
+      },
+    );
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(publishCalled).toEqual(['run-me']);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('runs publish when shouldPublish returns true', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push({
+      name: 'run-me',
+      async shouldPublish() {
+        return true;
+      },
+      async publish() {
+        publishCalled.push('run-me');
+      },
     });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(publishCalled).toEqual(['run-me']);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('runs all three hooks in order: validate, shouldPublish, publish', async function () {
+    const order: string[] = [];
+
+    mockPlugins.push({
+      name: 'full-plugin',
+      async validate() {
+        order.push('validate');
+      },
+      async shouldPublish() {
+        order.push('shouldPublish');
+        return true;
+      },
+      async publish() {
+        order.push('publish');
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(order).toEqual(['validate', 'shouldPublish', 'publish']);
+  });
+
+  it('catches thrown errors in publish phase without stopping other plugins', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push(
+      {
+        name: 'bad-plugin',
+        async publish() {
+          publishCalled.push('bad-plugin');
+          throw new Error('I forgot to use reportFailure');
+        },
+      },
+      {
+        name: 'good-plugin',
+        async publish() {
+          publishCalled.push('good-plugin');
+        },
+      },
+    );
+
+    await expect(
+      publish({ skipRepoSafetyCheck: true, dryRun: true }),
+    ).rejects.toThrow(ExitError);
+
+    expect(publishCalled).toEqual(['bad-plugin', 'good-plugin']);
+    expect(exitSpy).toHaveBeenCalledWith(-1);
+  });
+
+  it('reports failures from plugins without stopping others', async function () {
+    const publishCalled: string[] = [];
+
+    mockPlugins.push(
+      {
+        name: 'partially-failing',
+        async publish() {
+          publishCalled.push('partially-failing');
+          this.reportFailure('One package failed');
+        },
+      },
+      {
+        name: 'other-plugin',
+        async publish() {
+          publishCalled.push('other-plugin');
+        },
+      },
+    );
+
+    await expect(
+      publish({ skipRepoSafetyCheck: true, dryRun: true }),
+    ).rejects.toThrow(ExitError);
+
+    expect(publishCalled).toEqual(['partially-failing', 'other-plugin']);
+    expect(exitSpy).toHaveBeenCalledWith(-1);
+    const stderrOutput = vi
+      .mocked(process.stderr.write)
+      .mock.calls.map((c) => c[0])
+      .join('');
+    expect(stderrOutput).toContain('[partially-failing]');
+    expect(stderrOutput).toContain('One package failed');
+  });
+
+  it('succeeds when no plugins report failures', async function () {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
+    mockPlugins.push({
+      name: 'happy-plugin',
+      async publish() {
+        // no issues
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    expect(output).toContain('Would have successfully published release');
+
+    stdoutSpy.mockRestore();
+  });
+
+  it('does nothing with empty plugins array', async function () {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+
+    stdoutSpy.mockRestore();
+  });
+
+  it('skips packages without impact', async function () {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
+    const publishCalled: string[] = [];
+
+    // Override solution to have no-impact package
+    const { loadSolution } = await import('./plan.js');
+    vi.mocked(loadSolution).mockReturnValueOnce({
+      solution: new Map([
+        ['no-impact-pkg', { impact: undefined, oldVersion: '1.0.0' }],
+      ]),
+      description: 'test release',
+    });
+
+    mockPlugins.push({
+      name: 'should-not-run',
+      async publish() {
+        publishCalled.push('should-not-run');
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(publishCalled).toEqual([]);
+
+    stdoutSpy.mockRestore();
+  });
+
+  it('passes correct context to plugins', async function () {
+    let receivedContext: PluginContext | undefined;
+
+    mockPlugins.push({
+      name: 'inspector',
+      async publish(context) {
+        receivedContext = context;
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(receivedContext).toBeDefined();
+    expect(receivedContext!.release.dryRun).toBe(true);
+    expect(receivedContext!.release.description).toBe('test release');
+    expect(receivedContext!.package.name).toBe('test-pkg');
+    expect(receivedContext!.package.newVersion).toBe('2.0.0');
+    expect(receivedContext!.package.oldVersion).toBe('1.0.0');
+    expect(receivedContext!.package.tagName).toBe('latest');
+  });
+
+  it('passes api via this to plugins', async function () {
+    const apiShape: Partial<PluginAPI> = {};
+
+    mockPlugins.push({
+      name: 'api-inspector',
+      publish: async function (this: PluginAPI) {
+        apiShape.releaseError = this.releaseError;
+        apiShape.reportFailure = this.reportFailure;
+        apiShape.info = this.info;
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(typeof apiShape.releaseError).toBe('function');
+    expect(typeof apiShape.reportFailure).toBe('function');
+    expect(typeof apiShape.info).toBe('function');
+    expect(() => apiShape.releaseError!('test')).toThrow('test');
+  });
+
+  it('uses loadConfigForPackage for the per-package phase', async function () {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
+    mockPlugins.push({ name: 'p', async publish() {} });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    const { loadConfigForPackage } = await import('./config.js');
+    expect(vi.mocked(loadConfigForPackage)).toHaveBeenCalledOnce();
+
+    stdoutSpy.mockRestore();
   });
 });
