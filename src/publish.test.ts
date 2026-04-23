@@ -11,7 +11,7 @@ import { publish } from './publish.js';
 import type {
   PublishPlugin,
   PluginAPI,
-  PublishContext,
+  PluginContext,
 } from './plugin-types.js';
 
 vi.mock('execa', (importOriginal) => {
@@ -27,17 +27,17 @@ vi.mock('execa', (importOriginal) => {
   };
 });
 
-// Mock loadConfig to inject test plugins
+// Mock loadConfigForPackage to inject test plugins per package
 const mockPlugins: PublishPlugin[] = [];
 vi.mock('./config.js', () => {
   return {
-    loadConfig: vi.fn(async () => ({
+    loadConfigForPackage: vi.fn(async () => ({
       plugins: mockPlugins,
     })),
   };
 });
 
-// Mock loadSolution to return test data
+// Mock loadSolution to return test data with one package with impact
 vi.mock('./plan.js', () => {
   return {
     loadSolution: vi.fn(() => ({
@@ -138,17 +138,22 @@ describe('publish orchestrator', function () {
 
     await publish({ skipRepoSafetyCheck: true, dryRun: true });
 
-    expect(order).toEqual(['a-validate', 'b-validate', 'a-publish', 'b-publish']);
+    expect(order).toEqual([
+      'a-validate',
+      'b-validate',
+      'a-publish',
+      'b-publish',
+    ]);
   });
 
-  it('aborts on UserError from validate phase', async function () {
+  it('aborts on ReleaseError from validate phase', async function () {
     const publishCalled: string[] = [];
 
     mockPlugins.push(
       {
         name: 'failing-plugin',
-        async validate(_context, api) {
-          throw new api.UserError('Missing credentials');
+        async validate() {
+          this.releaseError('Missing credentials');
         },
         async publish() {
           publishCalled.push('failing-plugin');
@@ -168,7 +173,6 @@ describe('publish orchestrator', function () {
 
     expect(exitSpy).toHaveBeenCalledWith(-1);
     expect(publishCalled).toEqual([]);
-    // Ensure the plugin name is included in the user-facing error output
     const stderrOutput = vi
       .mocked(process.stderr.write)
       .mock.calls.map((c) => c[0])
@@ -289,9 +293,7 @@ describe('publish orchestrator', function () {
       publish({ skipRepoSafetyCheck: true, dryRun: true }),
     ).rejects.toThrow(ExitError);
 
-    // Both plugins ran
     expect(publishCalled).toEqual(['bad-plugin', 'good-plugin']);
-    // But the process exited with failure due to the thrown error
     expect(exitSpy).toHaveBeenCalledWith(-1);
   });
 
@@ -301,9 +303,9 @@ describe('publish orchestrator', function () {
     mockPlugins.push(
       {
         name: 'partially-failing',
-        async publish(_context, api) {
+        async publish() {
           publishCalled.push('partially-failing');
-          api.reportFailure('One package failed');
+          this.reportFailure('One package failed');
         },
       },
       {
@@ -320,7 +322,6 @@ describe('publish orchestrator', function () {
 
     expect(publishCalled).toEqual(['partially-failing', 'other-plugin']);
     expect(exitSpy).toHaveBeenCalledWith(-1);
-    // Ensure the failure reporter includes the plugin name in its message
     const stderrOutput = vi
       .mocked(process.stderr.write)
       .mock.calls.map((c) => c[0])
@@ -355,8 +356,6 @@ describe('publish orchestrator', function () {
       .spyOn(process.stdout, 'write')
       .mockImplementation(() => true);
 
-    // mockPlugins is already empty
-
     await publish({ skipRepoSafetyCheck: true, dryRun: true });
 
     expect(exitSpy).not.toHaveBeenCalled();
@@ -364,8 +363,38 @@ describe('publish orchestrator', function () {
     stdoutSpy.mockRestore();
   });
 
+  it('skips packages without impact', async function () {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
+    const publishCalled: string[] = [];
+
+    // Override solution to have no-impact package
+    const { loadSolution } = await import('./plan.js');
+    vi.mocked(loadSolution).mockReturnValueOnce({
+      solution: new Map([
+        ['no-impact-pkg', { impact: undefined, oldVersion: '1.0.0' }],
+      ]),
+      description: 'test release',
+    });
+
+    mockPlugins.push({
+      name: 'should-not-run',
+      async publish() {
+        publishCalled.push('should-not-run');
+      },
+    });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    expect(publishCalled).toEqual([]);
+
+    stdoutSpy.mockRestore();
+  });
+
   it('passes correct context to plugins', async function () {
-    let receivedContext: PublishContext | undefined;
+    let receivedContext: PluginContext | undefined;
 
     mockPlugins.push({
       name: 'inspector',
@@ -377,35 +406,46 @@ describe('publish orchestrator', function () {
     await publish({ skipRepoSafetyCheck: true, dryRun: true });
 
     expect(receivedContext).toBeDefined();
-    expect(receivedContext!.dryRun).toBe(true);
-    expect(receivedContext!.description).toBe('test release');
-    expect(receivedContext!.solution.get('test-pkg')).toMatchObject({
-      newVersion: '2.0.0',
-      impact: 'major',
-    });
+    expect(receivedContext!.release.dryRun).toBe(true);
+    expect(receivedContext!.release.description).toBe('test release');
+    expect(receivedContext!.package.name).toBe('test-pkg');
+    expect(receivedContext!.package.newVersion).toBe('2.0.0');
+    expect(receivedContext!.package.oldVersion).toBe('1.0.0');
+    expect(receivedContext!.package.tagName).toBe('latest');
   });
 
-  it('passes api with UserError, reportFailure, and info to plugins', async function () {
-    let receivedApi: PluginAPI | undefined;
+  it('passes api via this to plugins', async function () {
+    const apiShape: Partial<PluginAPI> = {};
 
     mockPlugins.push({
       name: 'api-inspector',
-      async publish(_context, api) {
-        receivedApi = api;
+      publish: async function (this: PluginAPI) {
+        apiShape.releaseError = this.releaseError;
+        apiShape.reportFailure = this.reportFailure;
+        apiShape.info = this.info;
       },
     });
 
     await publish({ skipRepoSafetyCheck: true, dryRun: true });
 
-    expect(receivedApi).toBeDefined();
-    expect(typeof receivedApi!.UserError).toBe('function');
-    expect(typeof receivedApi!.reportFailure).toBe('function');
-    expect(typeof receivedApi!.info).toBe('function');
-
-    // Verify UserError creates proper instances
-    const err = new receivedApi!.UserError('test');
-    expect(err).toBeInstanceOf(Error);
-    expect(err.name).toBe('UserError');
+    expect(typeof apiShape.releaseError).toBe('function');
+    expect(typeof apiShape.reportFailure).toBe('function');
+    expect(typeof apiShape.info).toBe('function');
+    expect(() => apiShape.releaseError!('test')).toThrow('test');
   });
 
+  it('uses loadConfigForPackage for the per-package phase', async function () {
+    const stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
+    mockPlugins.push({ name: 'p', async publish() {} });
+
+    await publish({ skipRepoSafetyCheck: true, dryRun: true });
+
+    const { loadConfigForPackage } = await import('./config.js');
+    expect(vi.mocked(loadConfigForPackage)).toHaveBeenCalledOnce();
+
+    stdoutSpy.mockRestore();
+  });
 });

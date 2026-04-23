@@ -3,7 +3,7 @@ export type { Impact } from './change-parser.js';
 
 import type { Solution } from './plan.js';
 
-export interface PublishContext {
+export interface ReleaseContext {
   /** The release plan solution: package name -> version bump info */
   solution: Solution;
   /** The changelog description text */
@@ -12,12 +12,31 @@ export interface PublishContext {
   dryRun: boolean;
 }
 
+export interface PackageContext {
+  /** The package name */
+  name: string;
+  /** The previous version */
+  oldVersion: string;
+  /** The version being published */
+  newVersion: string;
+  /** The npm dist-tag to publish under */
+  tagName: string;
+  /** Path to the package's package.json, relative to cwd */
+  pkgJSONPath: string;
+}
+
+export interface PluginContext {
+  release: ReleaseContext;
+  package: PackageContext;
+}
+
 export interface PluginAPI {
   /**
-   * Throw an instance of this for clean user-facing error messages.
-   * Non-UserError throws will be displayed with a stack trace.
+   * Abort the entire publish with a clean user-facing message (no stack trace).
+   * Use this for expected failure conditions like missing credentials.
+   * Any other thrown Error will be displayed with a stack trace.
    */
-  UserError: new (message: string) => Error;
+  releaseError(message: string): never;
 
   /**
    * Report a non-fatal failure. Other plugins will continue to run.
@@ -37,30 +56,39 @@ export interface PublishPlugin {
   name: string;
 
   /**
-   * Phase 1: Early precondition check. Runs before any publishing starts.
+   * Phase 1: Precondition check for a single package. Called once per package
+   * with impact, before shouldPublish and publish.
    *
    * If any plugin's validate() throws, the entire publish is aborted.
-   * Throw `api.UserError` for clean messages, or any Error for stack traces.
+   * Call `this.releaseError('msg')` for clean messages, or throw any Error for stack traces.
+   *
+   * `this` is bound to the plugin API: use this.releaseError, this.info, etc.
    */
-  validate?(context: PublishContext, api: PluginAPI): Promise<void>;
+  validate?(this: PluginAPI, context: PluginContext): Promise<void>;
 
   /**
-   * Phase 2: Decide whether this plugin's publish() should run.
+   * Phase 2: Decide whether this plugin's publish() should run for this package.
+   * Called once per package with impact.
    *
-   * Return `true` to proceed, `false` to skip publish() for this plugin.
+   * Return `true` to proceed, `false` to skip publish() for this package.
    * If absent, publish() always runs.
+   *
+   * `this` is bound to the plugin API: use this.releaseError, this.info, etc.
    */
-  shouldPublish?(context: PublishContext, api: PluginAPI): Promise<boolean>;
+  shouldPublish?(this: PluginAPI, context: PluginContext): Promise<boolean>;
 
   /**
-   * Phase 3: Do the actual publishing work. Only called when shouldPublish()
-   * returns `true` (or is absent).
+   * Phase 3: Do the actual publishing work for a single package.
+   * Only called when shouldPublish() returns `true` (or is absent).
+   * Called once per package with impact.
    *
-   * Use `api.reportFailure()` for non-fatal errors (other plugins continue).
+   * Use `this.reportFailure()` for non-fatal errors (other plugins continue).
    * Core wraps this in try/catch so a badly-behaved plugin that throws
    * doesn't prevent other plugins from running.
+   *
+   * `this` is bound to the plugin API: use this.releaseError, this.info, etc.
    */
-  publish(context: PublishContext, api: PluginAPI): Promise<void>;
+  publish(this: PluginAPI, context: PluginContext): Promise<void>;
 }
 
 export interface ReleasePlanConfig {
@@ -72,10 +100,10 @@ export interface ReleasePlanConfig {
  * When thrown during a plugin's validate() phase, the message is displayed
  * without a stack trace and the publish is aborted.
  */
-export class UserError extends Error {
+export class ReleaseError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'UserError';
+    this.name = 'ReleaseError';
   }
 }
 

@@ -1,8 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { githubTags } from './tags.js';
 import type { Solution } from '../../plan.js';
-import type { PluginAPI, PublishContext } from '../../plugin-types.js';
-import { UserError } from '../../plugin-types.js';
+import type {
+  PluginAPI,
+  ReleaseContext,
+  PluginContext,
+} from '../../plugin-types.js';
+import { ReleaseError } from '../../plugin-types.js';
 
 vi.stubEnv('GITHUB_SHA', 'test-sha');
 
@@ -39,11 +43,26 @@ vi.mock('execa', (importOriginal) => {
   };
 });
 
-function makeContext(solution: Solution, dryRun = false): PublishContext {
+function makeRelease(solution: Solution, dryRun = false): ReleaseContext {
   return {
     solution,
     description: 'test release',
     dryRun,
+  };
+}
+
+function makeContext(solution: Solution, dryRun = false): PluginContext {
+  const entry = [...solution.values()].find((e) => e.impact)!;
+  const name = [...solution.entries()].find(([, e]) => e.impact)![0];
+  return {
+    release: makeRelease(solution, dryRun),
+    package: {
+      name,
+      oldVersion: entry.oldVersion,
+      newVersion: (entry as any).newVersion,
+      tagName: (entry as any).tagName,
+      pkgJSONPath: (entry as any).pkgJSONPath,
+    },
   };
 }
 
@@ -56,7 +75,9 @@ function makeApi(): PluginAPI & {
   const infos: string[] = [];
   const successes: string[] = [];
   return {
-    UserError,
+    releaseError(message: string): never {
+      throw new ReleaseError(message);
+    },
     reportFailure: (msg: string) => failures.push(msg),
     info: (msg: string) => infos.push(msg),
     success: (msg: string) => successes.push(msg),
@@ -83,26 +104,52 @@ function makeSolution(): Solution {
 }
 
 describe('github-tags plugin', function () {
-  it('skips tag creation in dryRun mode', async function () {
+  it('shouldPublish returns false and logs when tag already exists', async function () {
+    mockGetRef.mockImplementationOnce(() => ({ status: 200 }));
     const plugin = githubTags();
     const api = makeApi();
     const solution = makeSolution();
     process.env.GITHUB_AUTH = 'auth';
 
-    await plugin.publish(makeContext(solution, true), api);
+    const result = await plugin.shouldPublish.call(api, makeContext(solution));
 
+    expect(result).toBe(false);
+    expect(api.infos[0]).toContain('has already been pushed up');
     expect(mockCreateRef).not.toHaveBeenCalled();
-    expect(api.infos[0]).toContain('--dryRun active');
   });
 
-  it('creates tag for packages with impact', async function () {
+  it('shouldPublish returns true when tag does not exist', async function () {
+    const plugin = githubTags();
+    const api = makeApi();
+    const solution = makeSolution();
+    process.env.GITHUB_AUTH = 'auth';
+
+    const result = await plugin.shouldPublish.call(api, makeContext(solution));
+
+    expect(result).toBe(true);
+  });
+
+  it('skips tag creation in dryRun mode', async function () {
     mockCreateRef.mockClear();
     const plugin = githubTags();
     const api = makeApi();
     const solution = makeSolution();
     process.env.GITHUB_AUTH = 'auth';
 
-    await plugin.publish(makeContext(solution), api);
+    await plugin.publish.call(api, makeContext(solution, true));
+
+    expect(mockCreateRef).not.toHaveBeenCalled();
+    expect(api.infos[0]).toContain('--dryRun active');
+  });
+
+  it('creates tag for package', async function () {
+    mockCreateRef.mockClear();
+    const plugin = githubTags();
+    const api = makeApi();
+    const solution = makeSolution();
+    process.env.GITHUB_AUTH = 'auth';
+
+    await plugin.publish.call(api, makeContext(solution));
 
     expect(mockCreateRef).toHaveBeenCalledOnce();
     expect(mockCreateRef.mock.lastCall![0]).toMatchObject({
@@ -113,51 +160,14 @@ describe('github-tags plugin', function () {
     });
   });
 
-  it('skips packages without impact', async function () {
-    mockCreateRef.mockClear();
+  it('validate throws ReleaseError when GITHUB_AUTH is missing', async function () {
     const plugin = githubTags();
     const api = makeApi();
-    const solution: Solution = new Map([
-      [
-        'unchanged-pkg',
-        {
-          oldVersion: '1.0.0',
-          impact: undefined,
-        },
-      ],
-    ]);
-    process.env.GITHUB_AUTH = 'auth';
-
-    await plugin.publish(makeContext(solution), api);
-
-    expect(mockCreateRef).not.toHaveBeenCalled();
-  });
-
-  it('skips tag if it already exists', async function () {
-    mockCreateRef.mockClear();
-    mockGetRef.mockImplementationOnce(() => ({ status: 200 }));
-    const plugin = githubTags();
-    const api = makeApi();
-    const solution = makeSolution();
-    process.env.GITHUB_AUTH = 'auth';
-
-    await plugin.publish(makeContext(solution), api);
-
-    expect(mockCreateRef).not.toHaveBeenCalled();
-    expect(api.infos[0]).toContain('has already been pushed up');
-  });
-
-  it('validate throws UserError when GITHUB_AUTH is missing', async function () {
-    const plugin = githubTags();
-    const api = makeApi();
-    const solution = makeSolution();
     const savedAuth = process.env.GITHUB_AUTH;
     delete process.env.GITHUB_AUTH;
 
     try {
-      await expect(plugin.validate!(makeContext(solution), api)).rejects.toThrow(
-        api.UserError,
-      );
+      await expect(plugin.validate.call(api)).rejects.toThrow(ReleaseError);
     } finally {
       if (savedAuth) process.env.GITHUB_AUTH = savedAuth;
     }
@@ -185,17 +195,15 @@ describe('tag format', function () {
     process.env.GITHUB_API_URL = 'https://api.github.com';
     process.env.GITHUB_AUTH = 'auth';
 
-    await plugin.publish(makeContext(solution, true), api);
+    await plugin.publish.call(api, makeContext(solution, true));
 
     const output = api.infos[0];
-
     expect(output).toContain('git tag v1.1.0`');
     expect(output).not.toContain('git tag v1.1.0-@scope/my-package');
   });
 
   it('creates tags with package name suffix for multi-package repos', async function () {
     const plugin = githubTags();
-    const api = makeApi();
     const solution = new Map([
       [
         '@scope/pkg-a',
@@ -221,9 +229,24 @@ describe('tag format', function () {
       ],
     ]) as Solution;
 
-    await plugin.publish(makeContext(solution, true), api);
-
-    expect(api.infos[0]).toContain('git tag v1.1.0-@scope/pkg-a');
-    expect(api.infos[1]).toContain('git tag v2.1.0-@scope/pkg-b');
+    // Call publish once per package (as the orchestrator would)
+    for (const [name, entry] of solution) {
+      if (!entry.impact) continue;
+      const api = makeApi();
+      const context: PluginContext = {
+        release: makeRelease(solution, true),
+        package: {
+          name,
+          oldVersion: entry.oldVersion,
+          newVersion: (entry as any).newVersion,
+          tagName: (entry as any).tagName,
+          pkgJSONPath: (entry as any).pkgJSONPath,
+        },
+      };
+      await plugin.publish.call(api, context);
+      expect(api.infos[0]).toContain(
+        `git tag v${(entry as any).newVersion}-${name}`,
+      );
+    }
   });
 });

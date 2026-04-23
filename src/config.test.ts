@@ -1,14 +1,11 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, assert } from 'vitest';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  defaultConfig,
-  loadConfig,
-  loadConfigForPackage,
-} from './config.js';
+import { defaultConfig, loadConfig, loadConfigForPackage } from './config.js';
 import { join, relative } from 'path';
 import { tmpdir } from 'os';
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'fs';
+import { PluginAPI, PublishPlugin } from './plugin-types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -181,29 +178,32 @@ export default defineConfig({
       expect(typeof plugin.publish).toBe('function');
     });
 
-    it('third-party plugin receives context and api when called', async function () {
+    it('third-party plugin receives context and api via this when called', async function () {
       const config = await loadConfig(fixtureRoot);
-      const plugin = config.plugins[0] as any;
+      const plugin = config.plugins[0] as PublishPlugin & { calls?: any[] };
 
       const fakeContext = {
-        solution: new Map([
-          [
-            'my-pkg',
-            { impact: 'minor', oldVersion: '1.0.0', newVersion: '1.1.0' },
-          ],
-        ]),
-        description: 'test',
-        dryRun: true,
+        release: { solution: new Map(), description: 'test', dryRun: true },
+        package: {
+          name: 'my-pkg',
+          oldVersion: '1.0.0',
+          newVersion: '1.1.0',
+          tagName: 'latest',
+          pkgJSONPath: './package.json',
+        },
       };
-      const fakeApi = {
-        UserError: class extends Error {},
+      const fakeApi: PluginAPI = {
+        releaseError(msg: string): never {
+          throw new Error(msg);
+        },
         reportFailure: () => {},
         info: () => {},
+        success: () => {},
       };
 
-      await plugin.validate(fakeContext, fakeApi);
-      await plugin.publish(fakeContext, fakeApi);
-
+      await plugin.validate!.call(fakeApi, fakeContext);
+      await plugin.publish.call(fakeApi, fakeContext);
+      assert(plugin.calls, 'Plugin should record calls');
       expect(plugin.calls).toHaveLength(2);
       expect(plugin.calls[0].phase).toBe('validate');
       expect(plugin.calls[0].context).toBe(fakeContext);
@@ -211,7 +211,7 @@ export default defineConfig({
       expect(plugin.calls[1].phase).toBe('publish');
     });
 
-    it('third-party plugin can use api.UserError to abort validate', async function () {
+    it('third-party plugin can use this.ReleaseError to abort validate', async function () {
       // pkg-b's config uses fakeRegistryPublish({ failPublish: 'pkg-b-error' })
       // but we need failValidate — use a uniqueDir for this specific scenario
       const dir = uniqueDir();
@@ -228,30 +228,31 @@ export default { plugins: [fakeRegistryPublish({ failValidate: 'missing token' }
       const config = await loadConfig(dir);
       const plugin = config.plugins[0];
 
-      class TestUserError extends Error {
-        constructor(message: string) {
-          super(message);
-          this.name = 'UserError';
-        }
-      }
-
-      const fakeApi = {
-        UserError: TestUserError,
+      const fakeApi: PluginAPI = {
+        releaseError(msg: string): never {
+          throw new Error(msg);
+        },
         reportFailure: () => {},
         info: () => {},
+        success: () => {},
       };
       const fakeContext = {
-        solution: new Map(),
-        description: '',
-        dryRun: false,
+        release: { solution: new Map(), description: '', dryRun: false },
+        package: {
+          name: 'test-pkg',
+          oldVersion: '1.0.0',
+          newVersion: '1.1.0',
+          tagName: 'latest',
+          pkgJSONPath: './package.json',
+        },
       };
 
-      await expect(plugin.validate!(fakeContext, fakeApi)).rejects.toThrow(
+      await expect(plugin.validate!.call(fakeApi, fakeContext)).rejects.toThrow(
         'missing token',
       );
     });
 
-    it('third-party plugin can use api.reportFailure for non-fatal errors', async function () {
+    it('third-party plugin can use this.reportFailure for non-fatal errors', async function () {
       // pkg-b's config has fakeRegistryPublish({ failPublish: 'pkg-b-error' })
       const config = await loadConfigForPackage(
         fixturePackages.pkgB,
@@ -260,19 +261,27 @@ export default { plugins: [fakeRegistryPublish({ failValidate: 'missing token' }
       const plugin = config.plugins[0];
 
       const failures: string[] = [];
-      const fakeApi = {
-        UserError: class extends Error {},
+      const fakeApi: PluginAPI = {
+        releaseError(msg: string): never {
+          throw new Error(msg);
+        },
         reportFailure: (msg: string) => failures.push(msg),
         info: () => {},
+        success: () => {},
       };
       const fakeContext = {
-        solution: new Map(),
-        description: '',
-        dryRun: false,
+        release: { solution: new Map(), description: '', dryRun: false },
+        package: {
+          name: 'pkg-b',
+          oldVersion: '1.0.0',
+          newVersion: '1.1.0',
+          tagName: 'latest',
+          pkgJSONPath: './package.json',
+        },
       };
 
-      // publish should NOT throw, it uses reportFailure instead
-      await plugin.publish(fakeContext, fakeApi);
+      // publish should NOT throw, it uses this.reportFailure instead
+      await plugin.publish.call(fakeApi, fakeContext);
       expect(failures).toEqual(['pkg-b-error']);
     });
 
@@ -293,29 +302,45 @@ export default { plugins: [fakeRegistryPublish({ failValidate: 'missing token' }
       );
 
       const fakeContext = {
-        solution: new Map(),
-        description: '',
-        dryRun: false,
+        release: { solution: new Map(), description: '', dryRun: false },
+        package: {
+          name: 'pkg-b',
+          oldVersion: '1.0.0',
+          newVersion: '1.1.0',
+          tagName: 'latest',
+          pkgJSONPath: './package.json',
+        },
       };
 
       // Root plugin: no failures
       const rootFailures: string[] = [];
-      await rootConfig.plugins[0].publish(fakeContext, {
-        UserError: class extends Error {},
-        reportFailure: (msg: string) => rootFailures.push(msg),
-        info: () => {},
-      });
+      await rootConfig.plugins[0].publish.call(
+        {
+          releaseError(msg: string): never {
+            throw new Error(msg);
+          },
+          reportFailure: (msg: string) => rootFailures.push(msg),
+          info: () => {},
+          success: () => {},
+        },
+        fakeContext,
+      );
       expect(rootFailures).toEqual([]);
 
       // pkg-b plugin: reports failure
       const pkgBFailures: string[] = [];
-      await pkgBConfig.plugins[0].publish(fakeContext, {
-        UserError: class extends Error {},
-        reportFailure: (msg: string) => pkgBFailures.push(msg),
-        info: () => {},
-      });
+      await pkgBConfig.plugins[0].publish.call(
+        {
+          releaseError(msg: string): never {
+            throw new Error(msg);
+          },
+          reportFailure: (msg: string) => pkgBFailures.push(msg),
+          info: () => {},
+          success: () => {},
+        },
+        fakeContext,
+      );
       expect(pkgBFailures).toEqual(['pkg-b-error']);
     });
   });
-
 });

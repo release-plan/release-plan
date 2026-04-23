@@ -285,10 +285,7 @@ function solutionFile(): string {
   return resolve('./.release-plan.json');
 }
 
-export function saveSolution(
-  solution: Solution,
-  description: string,
-): void {
+export function saveSolution(solution: Solution, description: string): void {
   writeJSONSync(
     solutionFile(),
     {

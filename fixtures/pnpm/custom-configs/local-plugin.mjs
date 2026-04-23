@@ -8,17 +8,17 @@ export function fakeRegistryPublish(options = {}) {
   return {
     name: 'fake-registry-publish',
 
-    async validate(context, api) {
-      calls.push({ phase: 'validate', context, api });
+    async validate(context) {
+      calls.push({ phase: 'validate', context, api: this });
       if (options.failValidate) {
-        throw new api.UserError(options.failValidate);
+        this.releaseError(options.failValidate);
       }
     },
 
-    async publish(context, api) {
-      calls.push({ phase: 'publish', context, api });
+    async publish(context) {
+      calls.push({ phase: 'publish', context, api: this });
       if (options.failPublish) {
-        api.reportFailure(options.failPublish);
+        this.reportFailure(options.failPublish);
       }
     },
 

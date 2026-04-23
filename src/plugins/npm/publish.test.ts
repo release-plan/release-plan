@@ -1,8 +1,12 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { npmPublish } from './publish.js';
-import type { Solution } from '../../plan.js';
-import type { PluginAPI, PublishContext } from '../../plugin-types.js';
-import { UserError } from '../../plugin-types.js';
+import type {
+  PluginAPI,
+  ReleaseContext,
+  PluginContext,
+  PackageContext,
+} from '../../plugin-types.js';
+import { ReleaseError } from '../../plugin-types.js';
 import { getPackages } from '../../interdep.js';
 import { execa } from 'execa';
 
@@ -19,11 +23,32 @@ vi.mock('execa', (importOriginal) => {
   };
 });
 
-function makeContext(solution: Solution, dryRun = false): PublishContext {
+function makeRelease(dryRun = false): ReleaseContext {
   return {
-    solution,
+    solution: new Map(),
     description: 'test release',
     dryRun,
+  };
+}
+
+function makePkg(overrides: Partial<PackageContext> = {}): PackageContext {
+  return {
+    name: 'thingy',
+    oldVersion: '3',
+    newVersion: '4',
+    tagName: 'latest',
+    pkgJSONPath: './package.json',
+    ...overrides,
+  };
+}
+
+function makeContext(
+  pkg?: Partial<PackageContext>,
+  dryRun = false,
+): PluginContext {
+  return {
+    release: makeRelease(dryRun),
+    package: makePkg(pkg),
   };
 }
 
@@ -36,7 +61,9 @@ function makeApi(): PluginAPI & {
   const infos: string[] = [];
   const successes: string[] = [];
   return {
-    UserError,
+    releaseError(message: string): never {
+      throw new ReleaseError(message);
+    },
     reportFailure: (msg: string) => failures.push(msg),
     info: (msg: string) => infos.push(msg),
     success: (msg: string) => successes.push(msg),
@@ -47,20 +74,6 @@ function makeApi(): PluginAPI & {
 }
 
 describe('npm-publish plugin', function () {
-  let solution: Solution;
-
-  beforeEach(() => {
-    solution = new Map();
-    solution.set('thingy', {
-      oldVersion: '3',
-      newVersion: '4',
-      impact: 'minor',
-      constraints: [],
-      tagName: 'latest',
-      pkgJSONPath: './package.json',
-    });
-  });
-
   afterEach(() => {
     vi.resetAllMocks();
   });
@@ -68,7 +81,7 @@ describe('npm-publish plugin', function () {
   it('adds the correct args with no options', async function () {
     const plugin = npmPublish();
     const api = makeApi();
-    await plugin.publish(makeContext(solution), api);
+    await plugin.publish.call(api, makeContext());
 
     expect(execa).toBeCalledWith('pnpm', ['publish', '--tag=latest'], {
       cwd: '.',
@@ -80,7 +93,7 @@ describe('npm-publish plugin', function () {
   it('adds access if passed by options', async function () {
     const plugin = npmPublish({ access: 'restricted' });
     const api = makeApi();
-    await plugin.publish(makeContext(solution), api);
+    await plugin.publish.call(api, makeContext());
 
     expect(execa).toBeCalledWith(
       'pnpm',
@@ -96,7 +109,7 @@ describe('npm-publish plugin', function () {
   it('adds otp if passed by options', async function () {
     const plugin = npmPublish({ otp: '12345' });
     const api = makeApi();
-    await plugin.publish(makeContext(solution), api);
+    await plugin.publish.call(api, makeContext());
 
     expect(execa).toBeCalledWith(
       'pnpm',
@@ -112,7 +125,7 @@ describe('npm-publish plugin', function () {
   it('adds publish-branch if passed by options', async function () {
     const plugin = npmPublish({ publishBranch: 'best-branch' });
     const api = makeApi();
-    await plugin.publish(makeContext(solution), api);
+    await plugin.publish.call(api, makeContext());
 
     expect(execa).toBeCalledWith(
       'pnpm',
@@ -125,19 +138,10 @@ describe('npm-publish plugin', function () {
     );
   });
 
-  it('adds tag if set in the solution', async function () {
-    solution.set('thingy', {
-      oldVersion: '3',
-      newVersion: '4',
-      impact: 'minor',
-      constraints: [],
-      tagName: 'best-tag',
-      pkgJSONPath: './package.json',
-    });
-
+  it('adds tag if set in the package context', async function () {
     const plugin = npmPublish();
     const api = makeApi();
-    await plugin.publish(makeContext(solution), api);
+    await plugin.publish.call(api, makeContext({ tagName: 'best-tag' }));
 
     expect(execa).toBeCalledWith('pnpm', ['publish', '--tag=best-tag'], {
       cwd: '.',
@@ -146,10 +150,10 @@ describe('npm-publish plugin', function () {
     });
   });
 
-  it('adds dry-run if context.dryRun is true', async function () {
+  it('adds dry-run if context.release.dryRun is true', async function () {
     const plugin = npmPublish();
     const api = makeApi();
-    await plugin.publish(makeContext(solution, true), api);
+    await plugin.publish.call(api, makeContext({}, true));
 
     expect(execa).toBeCalledWith(
       'pnpm',
@@ -165,7 +169,7 @@ describe('npm-publish plugin', function () {
   it('adds provenance if passed by options', async function () {
     const plugin = npmPublish({ provenance: true });
     const api = makeApi();
-    await plugin.publish(makeContext(solution), api);
+    await plugin.publish.call(api, makeContext());
 
     expect(execa).toBeCalledWith(
       'pnpm',
@@ -178,69 +182,56 @@ describe('npm-publish plugin', function () {
     );
   });
 
-  it('warns that a version exists if we are trying to release', async function () {
+  it('shouldPublish returns false and logs when version already exists', async function () {
     const plugin = npmPublish();
     const api = makeApi();
-    await plugin.publish(
-      makeContext(
-        new Map([
-          [
-            'release-plan',
-            {
-              oldVersion: '0.8.1',
-              newVersion: '0.9.0',
-              impact: 'minor',
-              pkgJSONPath: './package.json',
-            },
-          ],
-        ]) as Solution,
-      ),
+
+    const result = await plugin.shouldPublish.call(
       api,
+      makeContext({ name: 'release-plan', newVersion: '0.9.0' }),
     );
 
+    expect(result).toBe(false);
     expect(api.infos[api.infos.length - 1]).toMatchInlineSnapshot(
       `"release-plan has already been published @ version 0.9.0. Skipping publish;"`,
     );
     expect(execa).not.toHaveBeenCalled();
   });
 
-  it('skips publishing if npmSkipPublish is specified in package.json', async function () {
+  it('shouldPublish returns false and logs when skipNpmPublish is set', async function () {
     const packages = getPackages('./fixtures/pnpm/star-package');
     const plugin = npmPublish();
     const api = makeApi();
-    await plugin.publish(
-      makeContext(
-        new Map([
-          [
-            'do-not-publish',
-            {
-              oldVersion: '0.8.1',
-              newVersion: '0.9.0',
-              impact: 'minor',
-              constraints: [],
-              pkgJSONPath: packages.get('do-not-publish')?.pkgJSONPath,
-              tagName: 'latest',
-            },
-          ],
-          [
-            'star-package',
-            {
-              oldVersion: '0.8.1',
-              newVersion: '0.9.0',
-              impact: 'minor',
-              constraints: [],
-              pkgJSONPath: packages.get('star-package')?.pkgJSONPath,
-              tagName: 'latest',
-            },
-          ],
-        ]) as Solution,
-        true,
-      ),
+
+    const result = await plugin.shouldPublish.call(
       api,
+      makeContext({
+        name: 'do-not-publish',
+        pkgJSONPath: packages.get('do-not-publish')?.pkgJSONPath,
+      }),
     );
 
+    expect(result).toBe(false);
     expect(api.infos[0]).toMatchInlineSnapshot(
       `"skipping publish for do-not-publish, as config option skipNpmPublish is set in its package.json"`,
+    );
+  });
+
+  it('publish calls execa once for the single package', async function () {
+    const packages = getPackages('./fixtures/pnpm/star-package');
+    const plugin = npmPublish();
+    const api = makeApi();
+
+    await plugin.publish.call(
+      api,
+      makeContext(
+        {
+          name: 'star-package',
+          pkgJSONPath: packages.get('star-package')?.pkgJSONPath,
+          tagName: 'latest',
+        },
+        true,
+      ),
     );
 
     expect(execa).toHaveBeenCalledOnce();

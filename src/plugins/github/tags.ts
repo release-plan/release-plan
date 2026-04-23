@@ -1,4 +1,3 @@
-import { Octokit } from '@octokit/rest';
 import { dirname } from 'path';
 import type { PublishPlugin } from '../../plugin-types.js';
 import {
@@ -9,36 +8,13 @@ import {
   shouldUseSuffixedTags,
 } from './shared.js';
 
-async function doesTagExist(
-  octokit: Octokit,
-  tag: string,
-  reportFailure: (message: string) => void,
-): Promise<boolean | undefined> {
-  try {
-    const { owner, repo } = await getRepo();
-    const response = await octokit.git.getRef({
-      owner,
-      repo,
-      ref: `tags/${tag}`,
-    });
-
-    return response.status === 200;
-  } catch (err) {
-    if (err.status === 404) {
-      return false;
-    }
-    console.error(err.message);
-    reportFailure(`Problem while checking for existing GitHub tag`);
-  }
-}
-
-export function githubTags(): PublishPlugin {
+export function githubTags() {
   return {
     name: 'github-tags',
 
-    async validate(_context, api) {
+    async validate() {
       if (!process.env.GITHUB_AUTH) {
-        throw new api.UserError(
+        this.releaseError(
           'GITHUB_AUTH environment variable is required for creating tags',
         );
       }
@@ -46,52 +22,63 @@ export function githubTags(): PublishPlugin {
       await getRepo();
     },
 
-    async publish(context, api) {
+    async shouldPublish(context) {
+      const useSuffix = shouldUseSuffixedTags(context.release.solution);
+      const tag = tagFor(context.package.name, context.package, useSuffix);
       const octokit = createOctokit();
 
-      for (const [pkgName, entry] of context.solution) {
-        if (!entry.impact) {
-          continue;
-        }
-        try {
-          const useSuffix = shouldUseSuffixedTags(context.solution);
-          const tag = tagFor(pkgName, entry, useSuffix);
-          const cwd = dirname(entry.pkgJSONPath);
-          const sha = await getSha(cwd);
+      try {
+        const { owner, repo } = await getRepo();
+        const response = await octokit.git.getRef({
+          owner,
+          repo,
+          ref: `tags/${tag}`,
+        });
 
-          const preExisting = await doesTagExist(
-            octokit,
-            tag,
-            api.reportFailure,
+        if (response.status === 200) {
+          this.info(
+            `The tag, ${tag}, has already been pushed up for ${context.package.name}`,
           );
-
-          if (preExisting) {
-            api.info(
-              `The tag, ${tag}, has already been pushed up for ${pkgName}`,
-            );
-            // intentional early return since we make a tag for the whole repo, not per-package
-            return;
-          }
-
-          if (context.dryRun) {
-            console.log('logging to infos');
-            api.info(`--dryRun active. Skipping \`git tag ${tag}\``);
-            continue;
-          }
-
-          const { owner, repo } = await getRepo();
-          await octokit.git.createRef({
-            owner,
-            repo,
-            sha,
-            ref: `refs/tags/${tag}`,
-            type: 'commit',
-          });
-        } catch (err) {
-          console.error(err);
-          api.reportFailure(`Failed to create tag for ${pkgName}`);
+          return false;
+        }
+      } catch (err) {
+        if (err.status !== 404) {
+          console.error(err.message);
+          this.reportFailure(`Problem while checking for existing GitHub tag`);
+          return false;
         }
       }
+
+      return true;
     },
-  };
+
+    async publish(context) {
+      const useSuffix = shouldUseSuffixedTags(context.release.solution);
+      const tag = tagFor(context.package.name, context.package, useSuffix);
+      const cwd = dirname(context.package.pkgJSONPath);
+
+      try {
+        const sha = await getSha(cwd);
+
+        if (context.release.dryRun) {
+          this.info(`--dryRun active. Skipping \`git tag ${tag}\``);
+          return;
+        }
+
+        const octokit = createOctokit();
+
+        const { owner, repo } = await getRepo();
+        await octokit.git.createRef({
+          owner,
+          repo,
+          sha,
+          ref: `refs/tags/${tag}`,
+          type: 'commit',
+        });
+      } catch (err) {
+        console.error(err);
+        this.reportFailure(`Failed to create tag for ${context.package.name}`);
+      }
+    },
+  } satisfies PublishPlugin;
 }

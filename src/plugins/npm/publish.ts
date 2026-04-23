@@ -17,27 +17,6 @@ export interface NpmPublishOptions {
   provenance?: boolean;
 }
 
-async function doesVersionExist(
-  pkgName: string,
-  version: string,
-  reportFailure: (message: string) => void,
-): Promise<boolean | undefined> {
-  try {
-    const latest = await latestVersion(pkgName, { version });
-    return Boolean(latest);
-  } catch (err) {
-    if (
-      err.name === 'VersionNotFoundError' ||
-      err.name === 'PackageNotFoundError'
-    ) {
-      return false;
-    }
-
-    console.error(err.message);
-    reportFailure(`Problem while checking for existing npm release`);
-  }
-}
-
 function detectPackageManager(): string {
   if (existsSync('./pnpm-lock.yaml')) {
     return 'pnpm';
@@ -45,11 +24,47 @@ function detectPackageManager(): string {
   return 'npm';
 }
 
-export function npmPublish(options?: NpmPublishOptions): PublishPlugin {
+export function npmPublish(options?: NpmPublishOptions) {
   return {
     name: 'npm-publish',
 
-    async publish(context, api) {
+    async shouldPublish(context) {
+      // todo: we should deprecate this option, users would just setup a config
+      // for their package that doesn't include the npm-publish plugin if they
+      // don't want to publish to npm. In the meantime, we should support both.
+      const pkg = readJSONSync(context.package.pkgJSONPath);
+      if (pkg['release-plan']?.skipNpmPublish) {
+        this.info(
+          `skipping publish for ${context.package.name}, as config option skipNpmPublish is set in its package.json`,
+        );
+        return false;
+      }
+
+      try {
+        const existing = await latestVersion(context.package.name, {
+          version: context.package.newVersion,
+        });
+        if (existing) {
+          this.info(
+            `${context.package.name} has already been published @ version ${context.package.newVersion}. Skipping publish;`,
+          );
+          return false;
+        }
+      } catch (err) {
+        if (
+          err.name !== 'VersionNotFoundError' &&
+          err.name !== 'PackageNotFoundError'
+        ) {
+          console.error(err.message);
+          this.reportFailure(`Problem while checking for existing npm release`);
+          return false;
+        }
+      }
+
+      return true;
+    },
+
+    async publish(context) {
       const packageManager = detectPackageManager();
       const args = ['publish'];
 
@@ -65,60 +80,34 @@ export function npmPublish(options?: NpmPublishOptions): PublishPlugin {
         args.push(`--access=${options.access}`);
       }
 
-      if (context.dryRun) {
+      if (context.release.dryRun) {
         args.push('--dry-run');
+        this.info(
+          `--dryRun active. Adding \`--dry-run\` flag to \`${packageManager} publish${
+            options?.otp ? ' --otp=*redacted*' : ''
+          }\` for ${context.package.name}, which would publish version ${context.package.newVersion}\n`,
+        );
       }
 
       if (options?.provenance) {
         args.push('--provenance');
       }
 
-      for (const [pkgName, entry] of context.solution) {
-        if (!entry.impact) {
-          continue;
-        }
-
-        const pkg = readJSONSync(entry.pkgJSONPath);
-        if (pkg['release-plan']?.skipNpmPublish) {
-          api.info(
-            `skipping publish for ${pkgName}, as config option skipNpmPublish is set in its package.json`,
-          );
-          continue;
-        }
-
-        const preExisting = await doesVersionExist(
-          pkgName,
-          entry.newVersion,
-          api.reportFailure,
-        );
-
-        if (preExisting) {
-          api.info(
-            `${pkgName} has already been published @ version ${entry.newVersion}. Skipping publish;`,
-          );
-          continue;
-        }
-
-        if (context.dryRun) {
-          api.info(
-            `--dryRun active. Adding \`--dry-run\` flag to \`${packageManager} publish${
-              options?.otp ? ' --otp=*redacted*' : ''
-            }\` for ${pkgName}, which would publish version ${entry.newVersion}\n`,
-          );
-        }
-
-        try {
-          await execa(packageManager, [...args, `--tag=${entry.tagName}`], {
-            cwd: dirname(entry.pkgJSONPath),
+      try {
+        await execa(
+          packageManager,
+          [...args, `--tag=${context.package.tagName}`],
+          {
+            cwd: dirname(context.package.pkgJSONPath),
             stderr: 'inherit',
             stdout: 'inherit',
-          });
-        } catch (err) {
-          api.reportFailure(
-            `Failed to ${packageManager} publish ${pkgName} - Error: ${err.message}`,
-          );
-        }
+          },
+        );
+      } catch (err) {
+        this.reportFailure(
+          `Failed to ${packageManager} publish ${context.package.name} - Error: ${err.message}`,
+        );
       }
     },
-  };
+  } satisfies PublishPlugin;
 }
