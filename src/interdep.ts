@@ -22,6 +22,10 @@ export function getPackages(rootDir: string): Map<string, PkgEntry> {
       return;
     }
 
+    if (pkg['release-plan']?.overrides?.private) {
+      return;
+    }
+
     packages.set(pkg.name, {
       version: pkg.version,
       pkgJSONPath: `./${relative('.', packagePath)}`,
@@ -70,5 +74,6 @@ export function publishedInterPackageDeps(): Map<string, PkgEntry> {
       }
     }
   }
+
   return packages;
 }
