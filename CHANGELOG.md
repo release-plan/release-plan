@@ -1,5 +1,27 @@
 # release-plan Changelog
 
+## Release (2026-08-11)
+
+* release-plan 0.19.0 (major)
+
+#### :boom: Breaking Change
+* `release-plan`
+  * [#239](https://github.com/release-plan/release-plan/pull/239) Drop support for Node < 22 and update CI ([@mkszepp](https://github.com/mkszepp))
+
+#### :rocket: Enhancement
+* `release-plan`
+  * [#247](https://github.com/release-plan/release-plan/pull/247) Add new `ignore` config to remove non-private packages from release plans ([@NullVoxPopuli](https://github.com/NullVoxPopuli))
+
+#### :house: Internal
+* `release-plan`
+  * [#251](https://github.com/release-plan/release-plan/pull/251) configure breaking changes to be considered minor versions ([@mansona](https://github.com/mansona))
+  * [#250](https://github.com/release-plan/release-plan/pull/250) fix deployment of release-plan ([@mansona](https://github.com/mansona))
+
+#### Committers: 3
+- Chris Manson ([@mansona](https://github.com/mansona))
+- Markus Sanin ([@mkszepp](https://github.com/mkszepp))
+- [@NullVoxPopuli](https://github.com/NullVoxPopuli)
+
 ## Release (2026-04-01)
 
 * release-plan 0.18.0 (minor)
