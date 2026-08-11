@@ -71,5 +71,10 @@
   "packageManager": "pnpm@10.4.1",
   "engines": {
     "node": "22.* || 24.* || >= 26"
+  },
+  "release-plan": {
+    "semverIncrementAs": {
+      "major": "minor"
+    }
   }
 }
