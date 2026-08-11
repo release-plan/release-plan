@@ -69,10 +69,9 @@ When you use `release-plan` to publish to npm it will by default publish your pa
 
 :::
 
-## `overrides`
+## `ignore`
 
-In a monorepo you may want `release-plan` to only manage a subset of your workspace packages. The `overrides` config changes how `release-plan` will interpret the configured package. For example, if one package in your monorepo is released by "some other means" (requiring `"private"` to not be `true`), that package can be configured to be ignored by setting `release-plan.overrides.private`.
-
+In a monorepo you may want `release-plan` to only manage a subset of your workspace packages. Setting `ignore` to `true` tells `release-plan` to leave that package alone entirely. This is useful when a package is released by "some other means" but can't be marked `"private": true` (because it is actually published).
 
 ::: code-group
 
@@ -82,13 +81,9 @@ In a monorepo you may want `release-plan` to only manage a subset of your worksp
   "private": false,
   "version": "1.0.0",
   "release-plan": {
-    "overrides": {
-      "private": true
-    }
+    "ignore": true
   }
 }
 ```
-
-At this time, `private` is the only field supported in `overrides`.
 
 :::

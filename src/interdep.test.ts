@@ -4,7 +4,7 @@ import { getPackages } from './interdep.js';
 import { Project } from 'fixturify-project';
 
 describe('interdep', function () {
-  describe('release-plan.overrides.private', function () {
+  describe('release-plan.ignore', function () {
     let realCwd: string;
 
     afterEach(() => {
@@ -42,15 +42,15 @@ describe('interdep', function () {
       expect([...packages.keys()].sort()).toEqual(['face', 'test-package']);
     });
 
-    it('skips a package configured with overrides.private', async function () {
-      const packages = await loadWorkspace({ overrides: { private: true } });
+    it('skips a package configured with ignore', async function () {
+      const packages = await loadWorkspace({ ignore: true });
 
       expect([...packages.keys()]).toEqual(['test-package']);
       expect(packages.has('face')).toBe(false);
     });
 
-    it('still loads the package when overrides.private is false', async function () {
-      const packages = await loadWorkspace({ overrides: { private: false } });
+    it('still loads the package when ignore is false', async function () {
+      const packages = await loadWorkspace({ ignore: false });
 
       expect([...packages.keys()].sort()).toEqual(['face', 'test-package']);
     });

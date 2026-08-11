@@ -330,7 +330,7 @@ describe('plan', function () {
     );
   });
 
-  describe('release-plan.overrides.private', function () {
+  describe('release-plan.ignore', function () {
     async function writePackageConfig(
       relativeDir: string,
       config: Record<string, unknown>,
@@ -348,17 +348,15 @@ describe('plan', function () {
         'test-package',
       ]);
 
-      await writePackageConfig('.', { overrides: { private: true } });
+      await writePackageConfig('.', { ignore: true });
 
       const after = publishedInterPackageDeps();
       expect([...after.keys()]).not.toContain('test-package');
       expect([...after.get('face')!.isDependencyOf.keys()]).toEqual([]);
     });
 
-    it('includes a package when overrides.private is false', async () => {
-      await writePackageConfig('packages/face', {
-        overrides: { private: false },
-      });
+    it('includes a package when ignore is false', async () => {
+      await writePackageConfig('packages/face', { ignore: false });
 
       const solution = planVersionBumps({
         sections: [

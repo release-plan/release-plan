@@ -22,7 +22,7 @@ export function getPackages(rootDir: string): Map<string, PkgEntry> {
       return;
     }
 
-    if (pkg['release-plan']?.overrides?.private) {
+    if (pkg['release-plan']?.ignore) {
       return;
     }
 
