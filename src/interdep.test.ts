@@ -1,7 +1,61 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { getPackages } from './interdep.js';
 
+import { Project } from 'fixturify-project';
+
 describe('interdep', function () {
+  describe('release-plan.ignore', function () {
+    let realCwd: string;
+
+    afterEach(() => {
+      if (realCwd) {
+        process.chdir(realCwd);
+      }
+    });
+
+    async function loadWorkspace(faceConfig?: Record<string, unknown>) {
+      const project = new Project('test-package', '1.2.3', {
+        files: {
+          'pnpm-workspace.yaml': `packages:\n  - packages/*\n`,
+          packages: {
+            face: {
+              'package.json': JSON.stringify({
+                name: 'face',
+                version: '0.1.0',
+                ...(faceConfig ? { 'release-plan': faceConfig } : {}),
+              }),
+            },
+          },
+        },
+      });
+
+      await project.write();
+      realCwd = process.cwd();
+      process.chdir(project.baseDir);
+
+      return getPackages('./');
+    }
+
+    it('loads a non-private package by default', async function () {
+      const packages = await loadWorkspace();
+
+      expect([...packages.keys()].sort()).toEqual(['face', 'test-package']);
+    });
+
+    it('skips a package configured with ignore', async function () {
+      const packages = await loadWorkspace({ ignore: true });
+
+      expect([...packages.keys()]).toEqual(['test-package']);
+      expect(packages.has('face')).toBe(false);
+    });
+
+    it('still loads the package when ignore is false', async function () {
+      const packages = await loadWorkspace({ ignore: false });
+
+      expect([...packages.keys()].sort()).toEqual(['face', 'test-package']);
+    });
+  });
+
   describe('getPackages', function () {
     it('can load a simple pnpm package', function () {
       const answer = getPackages('./');

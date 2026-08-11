@@ -1,9 +1,11 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 
 import { explain, planVersionBumps, Solution } from './plan.js';
+import { publishedInterPackageDeps } from './interdep.js';
 
 import { Project } from 'fixturify-project';
 import { writeFile } from 'fs/promises';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 
 describe('plan', function () {
@@ -326,6 +328,74 @@ describe('plan', function () {
         ],
       ]),
     );
+  });
+
+  describe('release-plan.ignore', function () {
+    async function writePackageConfig(
+      relativeDir: string,
+      config: Record<string, unknown>,
+    ) {
+      const pkgJSONPath = join(relativeDir, 'package.json');
+      const pkg = JSON.parse(readFileSync(pkgJSONPath, 'utf8'));
+      pkg['release-plan'] = config;
+      await writeFile(pkgJSONPath, JSON.stringify(pkg));
+    }
+
+    it('scrubs excluded consumers from the dependency graph', async () => {
+      const before = publishedInterPackageDeps();
+      expect([...before.keys()]).toContain('test-package');
+      expect([...before.get('face')!.isDependencyOf.keys()]).toEqual([
+        'test-package',
+      ]);
+
+      await writePackageConfig('.', { ignore: true });
+
+      const after = publishedInterPackageDeps();
+      expect([...after.keys()]).not.toContain('test-package');
+      expect([...after.get('face')!.isDependencyOf.keys()]).toEqual([]);
+    });
+
+    it('includes a package when ignore is false', async () => {
+      await writePackageConfig('packages/face', { ignore: false });
+
+      const solution = planVersionBumps({
+        sections: [
+          {
+            packages: ['test-package'],
+            impact: 'minor',
+            heading: 'enhancement',
+          },
+        ],
+      });
+
+      expect(solution).to.deep.equal(
+        new Map([
+          [
+            'face',
+            {
+              impact: undefined,
+              oldVersion: '0.1.0',
+            },
+          ],
+          [
+            'test-package',
+            {
+              constraints: [
+                {
+                  impact: 'minor',
+                  reason: 'Appears in changelog section enhancement',
+                },
+              ],
+              impact: 'minor',
+              newVersion: '1.3.0',
+              oldVersion: '1.2.3',
+              pkgJSONPath: './package.json',
+              tagName: 'latest',
+            },
+          ],
+        ]),
+      );
+    });
   });
 
   describe('explain', function () {

@@ -68,3 +68,22 @@ When you use `release-plan` to publish to npm it will by default publish your pa
 ```
 
 :::
+
+## `ignore`
+
+In a monorepo you may want `release-plan` to only manage a subset of your workspace packages. Setting `ignore` to `true` tells `release-plan` to leave that package alone entirely. This is useful when a package is released by "some other means" but can't be marked `"private": true` (because it is actually published).
+
+::: code-group
+
+```json [package.json]
+{
+  "name": "example",
+  "private": false,
+  "version": "1.0.0",
+  "release-plan": {
+    "ignore": true
+  }
+}
+```
+
+:::
