@@ -5,11 +5,12 @@ import semver from 'semver';
 import { highlightMarkdown } from './highlight.js';
 import chalk from 'chalk';
 import { resolve } from 'path';
-import fsExtra from 'fs-extra';
+import { existsSync } from 'fs';
 
 const { inc, satisfies } = semver;
 
-const { existsSync, readJSONSync, writeJSONSync } = fsExtra;
+// eslint-disable-next-line n/no-missing-import
+import { readJSONSync, writeJSONSync } from './util.js';
 
 export type Solution = Map<
   string,

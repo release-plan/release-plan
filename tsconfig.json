@@ -18,6 +18,8 @@
     "skipLibCheck": true,
     "useUnknownInCatchVariables": false,
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "allowJs": true,
+    "types": ["node"]
   }
 }

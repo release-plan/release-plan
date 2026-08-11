@@ -2,9 +2,8 @@ import { parseChangeLogOrExit } from './change-parser.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { Solution } from './plan.js';
 import { planVersionBumps, saveSolution } from './plan.js';
-import fsExtra from 'fs-extra';
-
-const { readJSONSync, writeJSONSync } = fsExtra;
+// eslint-disable-next-line n/no-missing-import
+import { readJSONSync, writeJSONSync } from './util.js';
 
 const changelogPreamblePattern = /#.*Changelog.*$/i;
 

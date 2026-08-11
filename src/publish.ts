@@ -6,9 +6,10 @@ import latestVersion from 'latest-version';
 import { dirname } from 'path';
 import PackageJson from '@npmcli/package-json';
 import parseGithubUrl from 'parse-github-repo-url';
-import fsExtra from 'fs-extra';
+import { existsSync } from 'fs';
 
-const { existsSync, readJSONSync } = fsExtra;
+// eslint-disable-next-line n/no-missing-import
+import { readJSONSync } from './util.js';
 
 type PublishOptions = {
   skipRepoSafetyCheck?: boolean;
