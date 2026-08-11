@@ -26,6 +26,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm tsc
 
   tests:
     name: "Tests on Node.js ${{ matrix.node-version }} - ${{ matrix.os }}"
