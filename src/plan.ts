@@ -288,12 +288,19 @@ function solutionFile(): string {
 export function saveSolution(solution: Solution, description: string): void {
   writeJSONSync(
     solutionFile(),
-    { solution: Object.fromEntries(solution), description },
+    {
+      version: 1,
+      solution: Object.fromEntries(solution),
+      description,
+    },
     { spaces: 2 },
   );
 }
 
-export function loadSolution(): { solution: Solution; description: string } {
+export function loadSolution(): {
+  solution: Solution;
+  description: string;
+} {
   try {
     if (!existsSync(solutionFile())) {
       const err = new Error(`No such file ${solutionFile()}`);
@@ -301,6 +308,12 @@ export function loadSolution(): { solution: Solution; description: string } {
       throw err;
     }
     const json = readJSONSync(solutionFile());
+    if (json.version !== undefined && json.version !== 1) {
+      process.stderr.write(
+        `Unsupported release plan version: ${json.version}. This version of release-plan only supports version 1.\n`,
+      );
+      process.exit(-1);
+    }
     return {
       solution: new Map(Object.entries(json.solution)),
       description: json.description,

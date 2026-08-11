@@ -10,6 +10,16 @@
     "Chris Manson <chris@manson.ie>"
   ],
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/plugin-types.d.ts",
+      "default": "./dist/plugin-types.js"
+    },
+    "./plugins": {
+      "types": "./dist/plugins/index.d.ts",
+      "default": "./dist/plugins/index.js"
+    }
+  },
   "bin": "./dist/cli.js",
   "scripts": {
     "build": "tsc",
