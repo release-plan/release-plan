@@ -1,8 +1,9 @@
 import { relative, join } from 'path';
-import fsExtra from 'fs-extra';
 import { getPackagesSync } from '@manypkg/get-packages';
 
-const { readJSONSync } = fsExtra;
+// eslint-disable-next-line n/no-missing-import
+import { readJSONSync } from './util.js';
+
 export type Range = `workspace:${string}`;
 
 export interface PkgEntry {
