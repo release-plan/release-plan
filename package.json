@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@manypkg/get-packages": "^2.2.0",
-    "@npmcli/package-json": "^6.1.0",
+    "@npmcli/package-json": "^8.0.0",
     "@octokit/rest": "^22.0.1",
     "assert-never": "^1.2.1",
     "chalk": "^6.0.0",
