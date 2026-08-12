@@ -1,5 +1,28 @@
 # release-plan Changelog
 
+## Release (2026-08-12)
+
+* release-plan 0.20.0 (minor)
+
+#### :rocket: Enhancement
+* `release-plan`
+  * [#267](https://github.com/release-plan/release-plan/pull/267) update @manypkg/get-packages to v3 ([@mansona](https://github.com/mansona))
+  * [#266](https://github.com/release-plan/release-plan/pull/266) update @npmcli/package-json to v8 ([@mansona](https://github.com/mansona))
+  * [#265](https://github.com/release-plan/release-plan/pull/265) update @octokit/rest to v22 ([@mansona](https://github.com/mansona))
+  * [#264](https://github.com/release-plan/release-plan/pull/264) update chalk to v6 ([@mansona](https://github.com/mansona))
+  * [#255](https://github.com/release-plan/release-plan/pull/255) stop using fs-extra ([@mansona](https://github.com/mansona))
+
+#### :bug: Bug Fix
+* `release-plan`
+  * [#262](https://github.com/release-plan/release-plan/pull/262) fix path to github-changelog main ([@mansona](https://github.com/mansona))
+
+#### :house: Internal
+* `release-plan`
+  * [#269](https://github.com/release-plan/release-plan/pull/269) stop prettier complaining about json files ([@mansona](https://github.com/mansona))
+
+#### Committers: 1
+- Chris Manson ([@mansona](https://github.com/mansona))
+
 ## Release (2026-08-11)
 
 * release-plan 0.19.0 (major)
