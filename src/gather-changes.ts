@@ -8,7 +8,7 @@ export async function gatherChanges() {
   const githubChangelogPath = require.resolve('github-changelog');
 
   const result = await execa('node', [
-    resolve(dirname(githubChangelogPath), 'bin', 'cli.js'),
+    resolve(dirname(githubChangelogPath), '..', 'bin', 'cli.js'),
     '--ignore-releases',
     '--next-version',
     'Release',
