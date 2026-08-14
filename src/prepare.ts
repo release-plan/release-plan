@@ -1,47 +1,39 @@
 import { parseChangeLogOrExit } from './change-parser.js';
-import { readFileSync, writeFileSync } from 'node:fs';
 import type { Solution } from './plan.js';
 import { planVersionBumps, saveSolution } from './plan.js';
+import { prependToChangelog } from './changelog-file.js';
+import { changelogPerPackage } from './config.js';
+import { updatePackageChangelogs } from './per-package-changelog.js';
 // eslint-disable-next-line n/no-missing-import
 import { readJSONSync, writeJSONSync } from './util.js';
 
-const changelogPreamblePattern = /#.*Changelog.*$/i;
-
-export function updateChangelog(
+// also used as the body of the GitHub release, so it is built even when no
+// aggregate changelog gets written
+export function releaseEntry(
   newChangelogContent: string,
   solution: Solution,
 ): string {
-  const targetChangelogFile = './CHANGELOG.md';
-  const oldChangelogContent = readFileSync(targetChangelogFile, 'utf8').split(
-    '\n',
-  );
-
-  if (!changelogPreamblePattern.test(oldChangelogContent[0])) {
-    process.stderr.write(
-      `Cannot parse existing changelog. Expected it to match:\n${changelogPreamblePattern}\n`,
-    );
-    process.exit(-1);
-  }
-
   const [firstNewLine, ...restNewLines] = newChangelogContent
     .trim()
     .split('\n');
 
-  const newOutput =
+  return (
     firstNewLine +
     '\n\n' +
     versionSummary(solution) +
     '\n' +
     restNewLines.join('\n') +
-    '\n';
-  writeFileSync(
-    targetChangelogFile,
-    oldChangelogContent[0] +
-      '\n\n' +
-      newOutput +
-      oldChangelogContent.slice(1).join('\n'),
+    '\n'
   );
-  return newOutput;
+}
+
+export function updateChangelog(
+  newChangelogContent: string,
+  solution: Solution,
+): string {
+  const entry = releaseEntry(newChangelogContent, solution);
+  prependToChangelog('./CHANGELOG.md', entry);
+  return entry;
 }
 
 function versionSummary(solution: Solution): string {
@@ -71,7 +63,20 @@ export async function prepare(
   const changes = parseChangeLogOrExit(newChangelogContent);
   const solution = planVersionBumps(changes, singlePackage);
   updateVersions(solution);
-  const description = updateChangelog(newChangelogContent, solution);
+
+  let description: string;
+  if (changelogPerPackage()) {
+    description = releaseEntry(newChangelogContent, solution);
+    updatePackageChangelogs(
+      newChangelogContent,
+      changes,
+      solution,
+      singlePackage,
+    );
+  } else {
+    description = updateChangelog(newChangelogContent, solution);
+  }
+
   saveSolution(solution, description);
   return solution;
 }

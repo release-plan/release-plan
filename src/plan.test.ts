@@ -45,6 +45,7 @@ describe('plan', function () {
       sections: [
         {
           packages: ['test-package'],
+          groups: [],
           impact: 'minor',
           heading: 'enhancement',
         },
@@ -67,6 +68,7 @@ describe('plan', function () {
               {
                 impact: 'minor',
                 reason: 'Appears in changelog section enhancement',
+                kind: 'changelog',
               },
             ],
             impact: 'minor',
@@ -85,6 +87,7 @@ describe('plan', function () {
       sections: [
         {
           packages: ['face'],
+          groups: [],
           impact: 'minor',
           heading: 'enhancement',
         },
@@ -100,6 +103,7 @@ describe('plan', function () {
               {
                 impact: 'minor',
                 reason: 'Appears in changelog section enhancement',
+                kind: 'changelog',
               },
             ],
             impact: 'minor',
@@ -116,6 +120,7 @@ describe('plan', function () {
               {
                 impact: 'patch',
                 reason: 'Has dependency `workspace:*` on face',
+                kind: 'dependency',
               },
             ],
             impact: 'patch',
@@ -134,6 +139,7 @@ describe('plan', function () {
       sections: [
         {
           packages: ['face-not-exist'],
+          groups: [],
           impact: 'major',
           heading: 'enhancement',
         },
@@ -179,6 +185,7 @@ describe('plan', function () {
       sections: [
         {
           packages: ['test-package'],
+          groups: [],
           impact: 'minor',
           heading: 'enhancement',
         },
@@ -201,6 +208,7 @@ describe('plan', function () {
               {
                 impact: 'minor',
                 reason: 'Appears in changelog section enhancement',
+                kind: 'changelog',
               },
             ],
             impact: 'minor',
@@ -231,6 +239,7 @@ describe('plan', function () {
       sections: [
         {
           packages: ['face'],
+          groups: [],
           impact: 'minor',
           heading: 'enhancement',
         },
@@ -248,6 +257,7 @@ describe('plan', function () {
               {
                 impact: 'minor',
                 reason: 'Appears in changelog section enhancement',
+                kind: 'changelog',
               },
             ],
             newVersion: '0.2.0',
@@ -262,6 +272,7 @@ describe('plan', function () {
               {
                 impact: 'patch',
                 reason: 'Has dependency `workspace:*` on face',
+                kind: 'dependency',
               },
             ],
             impact: 'patch',
@@ -295,6 +306,7 @@ describe('plan', function () {
       sections: [
         {
           packages: ['test-package'],
+          groups: [],
           impact: 'major',
           heading: 'breaking',
         },
@@ -317,6 +329,7 @@ describe('plan', function () {
               {
                 impact: 'major',
                 reason: 'Appears in changelog section breaking',
+                kind: 'changelog',
               },
             ],
             impact: 'major',
@@ -362,6 +375,7 @@ describe('plan', function () {
         sections: [
           {
             packages: ['test-package'],
+            groups: [],
             impact: 'minor',
             heading: 'enhancement',
           },
@@ -384,6 +398,7 @@ describe('plan', function () {
                 {
                   impact: 'minor',
                   reason: 'Appears in changelog section enhancement',
+                  kind: 'changelog',
                 },
               ],
               impact: 'minor',
