@@ -69,6 +69,26 @@ When you use `release-plan` to publish to npm it will by default publish your pa
 
 :::
 
+## `skipChangelogUpdate`
+
+By default `release-plan prepare` prepends the release notes to `CHANGELOG.md`. Setting `skipChangelogUpdate` to `true` leaves that file alone — versions are still bumped and the notes are still used as the body of the GitHub release. This is useful if you generate your changelog by some other means, or don't keep one in the repo at all.
+
+Unlike the other settings, this one is only read from the `release-plan` section of the **root** `package.json`, because there is a single changelog per release.
+
+::: code-group
+
+```json [package.json]
+{
+  "name": "example",
+  "version": "1.0.0",
+  "release-plan": {
+    "skipChangelogUpdate": true
+  }
+}
+```
+
+:::
+
 ## `ignore`
 
 In a monorepo you may want `release-plan` to only manage a subset of your workspace packages. Setting `ignore` to `true` tells `release-plan` to leave that package alone entirely. This is useful when a package is released by "some other means" but can't be marked `"private": true` (because it is actually published).

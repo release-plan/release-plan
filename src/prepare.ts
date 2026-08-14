@@ -54,6 +54,12 @@ function versionSummary(solution: Solution): string {
   return result.join('\n');
 }
 
+function skipChangelogUpdate(): boolean {
+  return Boolean(
+    readJSONSync('./package.json')['release-plan']?.skipChangelogUpdate,
+  );
+}
+
 function updateVersions(solution: Solution) {
   for (const entry of solution.values()) {
     if (entry.impact) {
@@ -71,7 +77,9 @@ export async function prepare(
   const changes = parseChangeLogOrExit(newChangelogContent);
   const solution = planVersionBumps(changes, singlePackage);
   updateVersions(solution);
-  const description = updateChangelog(newChangelogContent, solution);
+  const description = skipChangelogUpdate()
+    ? newChangelogContent
+    : updateChangelog(newChangelogContent, solution);
   saveSolution(solution, description);
   return solution;
 }
