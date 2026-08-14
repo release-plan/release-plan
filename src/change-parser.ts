@@ -1,7 +1,14 @@
 export type Impact = 'major' | 'minor' | 'patch';
 export type UnlabeledSection = { unlabeled: true; summaryText: string };
+
+// entries are the change descriptions with their leading bullet stripped.
+// packages is empty for the "Other" group and for repos whose changelog has no
+// package attribution at all.
+export type ChangeGroup = { packages: string[]; entries: string[] };
+
 export type LabeledSection = {
   packages: string[];
+  groups: ChangeGroup[];
   impact: Impact;
   heading: string;
 };
@@ -76,26 +83,57 @@ function parseSection(lines: string[]): Section | undefined {
   }
 
   const packages = new Set<string>();
+  const groups: ChangeGroup[] = [];
+  let unattributed: ChangeGroup | undefined;
+
   while (stillWithinSection(lines)) {
-    const packageList = parsePackageList(lines);
+    const line = lines.shift()!;
+    if (!line.trim()) {
+      continue;
+    }
+
+    const packageList = parsePackageList(line);
     if (packageList) {
       for (const pkg of packageList) {
         packages.add(pkg);
       }
+      groups.push({ packages: packageList, entries: consumeEntries(lines) });
+      continue;
+    }
+
+    if (!unattributed) {
+      unattributed = { packages: [], entries: [] };
+      groups.push(unattributed);
+    }
+    if (line === '* Other') {
+      unattributed.entries.push(...consumeEntries(lines));
+    } else {
+      unattributed.entries.push(stripBullet(line));
     }
   }
+
   return {
     packages: [...packages],
+    groups,
     impact: sectionConfig.impact,
     heading,
   };
 }
 
-function parsePackageList(lines: string[]): string[] | undefined {
-  const line = lines.shift();
-  if (!line) {
-    return;
+function stripBullet(line: string): string {
+  return line.replace(/^\s*\*\s+/, '');
+}
+
+// the change descriptions belonging to a package list are indented beneath it
+function consumeEntries(lines: string[]): string[] {
+  const entries: string[] = [];
+  while (stillWithinSection(lines) && /^\s+\*\s/.test(lines[0])) {
+    entries.push(stripBullet(lines.shift()!));
   }
+  return entries;
+}
+
+function parsePackageList(line: string): string[] | undefined {
   if (line === '* Other') {
     return;
   }

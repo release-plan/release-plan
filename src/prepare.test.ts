@@ -4,6 +4,7 @@ import { updateChangelog } from './prepare.js';
 
 const mocks = vi.hoisted(() => {
   return {
+    existsSync: vi.fn().mockImplementation(() => true),
     readFileSync: vi.fn().mockImplementation(() => ''),
     writeFileSync: vi.fn().mockImplementation(() => ''),
   };

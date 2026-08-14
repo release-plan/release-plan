@@ -12,6 +12,15 @@ const { inc, satisfies } = semver;
 // eslint-disable-next-line n/no-missing-import
 import { readJSONSync, writeJSONSync } from './util.js';
 
+// 'dependency' constraints come from bumping a workspace dependency rather than
+// from a change to the package itself
+export type ConstraintKind = 'changelog' | 'dependency';
+export type Constraint = {
+  impact: Impact;
+  reason: string;
+  kind: ConstraintKind;
+};
+
 export type Solution = Map<
   string,
   | { impact: undefined; oldVersion: string }
@@ -20,27 +29,32 @@ export type Solution = Map<
       oldVersion: string;
       newVersion: string;
       tagName: string;
-      constraints: { impact: Impact; reason: string }[];
+      constraints: Constraint[];
       pkgJSONPath: string;
     }
 >;
 
 class Plan {
-  #constraints: Map<string, { impact: Impact; reason: string }[]>;
+  #constraints: Map<string, Constraint[]>;
   #pkgs: ReturnType<typeof publishedInterPackageDeps>;
 
   constructor() {
     this.#pkgs = publishedInterPackageDeps();
 
     // initialize constraints for every published package
-    const constraints = new Map<string, { impact: Impact; reason: string }[]>();
+    const constraints = new Map<string, Constraint[]>();
     for (const pkg of this.#pkgs.keys()) {
       constraints.set(pkg, []);
     }
     this.#constraints = constraints;
   }
 
-  addConstraint(packageName: string, impact: Impact, reason: string): void {
+  addConstraint(
+    packageName: string,
+    impact: Impact,
+    reason: string,
+    kind: ConstraintKind,
+  ): void {
     const pkgConstraints = this.#constraints.get(packageName);
     if (!pkgConstraints) {
       console.warn(chalk.yellow(`Warning: unknown package "${packageName}"`));
@@ -51,7 +65,7 @@ class Plan {
         (existing) => existing.impact === impact && existing.reason === reason,
       )
     ) {
-      pkgConstraints.push({ impact, reason });
+      pkgConstraints.push({ impact, reason, kind });
       this.#propagate(packageName, impact);
     }
   }
@@ -161,6 +175,7 @@ class Plan {
             consumerName,
             'patch',
             `Has dependency ${'`'}${workspaceRange}${'`'} on ${packageName}`,
+            'dependency',
           );
           break;
         case 'peerDependencies':
@@ -168,6 +183,7 @@ class Plan {
             consumerName,
             'major',
             `Has peer dependency ${'`'}${workspaceRange}${'`'} on ${packageName}`,
+            'dependency',
           );
           break;
         default:
@@ -267,6 +283,7 @@ export function planVersionBumps(
         singlePackage,
         section.impact,
         `Appears in changelog section ${section.heading}`,
+        'changelog',
       );
     } else {
       for (const pkg of section.packages) {
@@ -274,6 +291,7 @@ export function planVersionBumps(
           pkg,
           section.impact,
           `Appears in changelog section ${section.heading}`,
+          'changelog',
         );
       }
     }

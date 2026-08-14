@@ -69,6 +69,50 @@ When you use `release-plan` to publish to npm it will by default publish your pa
 
 :::
 
+## `changelogPerPackage`
+
+By default `release-plan` maintains a single `CHANGELOG.md` at the root of the repo, listing every released package together. Set `changelogPerPackage` to `true` and it instead writes a `CHANGELOG.md` next to each released package's `package.json`, containing only that package's changes. The root `CHANGELOG.md` is left untouched from then on.
+
+Unlike the other settings on this page, this one describes the whole repo, so it is only read from the workspace root `package.json`.
+
+::: code-group
+
+```json [package.json]
+{
+  "name": "my-monorepo",
+  "private": true,
+  "release-plan": {
+    "changelogPerPackage": true
+  }
+}
+```
+
+:::
+
+A package's changelog gets one section per changelog heading, carrying just the pull requests attributed to it:
+
+```md
+## v1.3.0 (2026-08-14)
+
+#### :rocket: Enhancement
+
+- [#1](https://github.com/my-org/my-repo/pull/1) Grew a nose ([@someone](https://github.com/someone))
+```
+
+Packages released only because a workspace dependency was released have no pull requests of their own, so they get a section explaining the bump instead:
+
+```md
+## v0.1.1 (2026-08-14)
+
+#### :arrow_up: Dependency Updates
+
+- Has dependency `workspace:^` on face
+```
+
+Changes that GitHub could not attribute to any package (the `Other` bucket) bump no package, so they appear in no package's changelog. The GitHub release body still describes the release as a whole, exactly as it does without this setting.
+
+Packages that don't have a `CHANGELOG.md` yet get one created.
+
 ## `ignore`
 
 In a monorepo you may want `release-plan` to only manage a subset of your workspace packages. Setting `ignore` to `true` tells `release-plan` to leave that package alone entirely. This is useful when a package is released by "some other means" but can't be marked `"private": true` (because it is actually published).
