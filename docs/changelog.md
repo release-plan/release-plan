@@ -1,13 +1,11 @@
 # Changelog
 
-Release Plan will generate a Changelog from your pull requests title. It is
-using the [`github-changelog`](https://www.npmjs.com/package/github-changelog)
-package to gather all changes for the next release.
+Release Plan generates a changelog from the titles of your pull requests. The
+generator is a port of
+[`github-changelog`](https://github.com/release-plan/github-changelog).
 
-By default `github-changelog` will show all pull requests that have been merged
-since the latest tagged commit in the repository. That is however only true for
-pull requests with certain labels applied. The labels that are supported by
-default are:
+By default the changelog lists the pull requests that were merged after the
+latest tag. A pull request needs one of these labels to appear:
 
 - `breaking` (:boom: Breaking Change)
 - `enhancement` (:rocket: Enhancement)
@@ -17,8 +15,7 @@ default are:
 
 ## Configuration
 
-You can configure `github-changelog` in various ways. The easiest way is by
-adding a `changelog` key to the `package.json` file of your project:
+Add a `changelog` key to the `package.json` file of your project:
 
 ```json5
 {

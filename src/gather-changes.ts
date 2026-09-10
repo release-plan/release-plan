@@ -1,17 +1,23 @@
-import { execa } from 'execa';
-import { resolve } from 'path';
-import { dirname } from 'path';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
+import { dirname, resolve } from 'node:path';
 
-export async function gatherChanges() {
-  const githubChangelogPath = require.resolve('github-changelog');
+import Changelog from './changelog/changelog.js';
+import { load as loadChangelogConfig } from './changelog/configuration.js';
+import type { PackageLocation } from './changelog/configuration.js';
+import { publishedInterPackageDeps } from './interdep.js';
 
-  const result = await execa('node', [
-    resolve(dirname(githubChangelogPath), '..', 'bin', 'cli.js'),
-    '--ignore-releases',
-    '--next-version',
-    'Release',
-  ]);
-  return result.stdout;
+export async function gatherChanges(): Promise<string> {
+  const config = loadChangelogConfig({
+    packages: publishedPackageLocations(),
+    ignoreReleases: true,
+    nextVersion: 'Release',
+  });
+
+  return new Changelog(config).createMarkdown();
+}
+
+function publishedPackageLocations(): PackageLocation[] {
+  return [...publishedInterPackageDeps()].map(([name, entry]) => ({
+    name,
+    path: resolve(dirname(entry.pkgJSONPath)),
+  }));
 }
