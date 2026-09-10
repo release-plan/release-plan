@@ -37,7 +37,7 @@ export default tseslint.config(
   },
   {
     files: [
-      'src/*.test.ts',
+      'src/**/*.test.ts',
       'eslint.config.mjs',
       'vitest.config.js',
       'docs/.vitepress/config.js',
