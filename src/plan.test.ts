@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 
-import { explain, planVersionBumps, Solution } from './plan.js';
+import { explain, planVersionBumps, saveSolution, Solution } from './plan.js';
 import { publishedInterPackageDeps } from './interdep.js';
 
 import { Project } from 'fixturify-project';
@@ -328,6 +328,18 @@ describe('plan', function () {
         ],
       ]),
     );
+  });
+
+  describe('saveSolution', function () {
+    it('writes .release-plan.json with a trailing newline', function () {
+      saveSolution(new Map(), 'nothing to release');
+
+      expect(readFileSync('.release-plan.json', 'utf8')).to.eq(`{
+  "solution": {},
+  "description": "nothing to release"
+}
+`);
+    });
   });
 
   describe('release-plan.ignore', function () {
