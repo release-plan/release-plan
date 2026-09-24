@@ -16,5 +16,5 @@ export function readJSONSync(filePath) {
  * @param {number} options.spaces the number of spaces used for indentation - default: 2
  */
 export function writeJSONSync(filePath, object, { spaces } = { spaces: 2 }) {
-  writeFileSync(filePath, JSON.stringify(object, null, spaces));
+  writeFileSync(filePath, JSON.stringify(object, null, spaces) + '\n');
 }
