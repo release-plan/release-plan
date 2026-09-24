@@ -1,26 +1,18 @@
 {
   "solution": {
     "release-plan": {
-      "impact": "minor",
-      "oldVersion": "0.19.0",
-      "newVersion": "0.20.0",
+      "impact": "patch",
+      "oldVersion": "0.20.0",
+      "newVersion": "0.20.1",
       "tagName": "latest",
       "constraints": [
         {
-          "impact": "minor",
-          "reason": "Appears in changelog section :rocket: Enhancement"
-        },
-        {
           "impact": "patch",
           "reason": "Appears in changelog section :bug: Bug Fix"
-        },
-        {
-          "impact": "patch",
-          "reason": "Appears in changelog section :house: Internal"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-08-12)\n\n* release-plan 0.20.0 (minor)\n\n#### :rocket: Enhancement\n* `release-plan`\n  * [#267](https://github.com/release-plan/release-plan/pull/267) update @manypkg/get-packages to v3 ([@mansona](https://github.com/mansona))\n  * [#266](https://github.com/release-plan/release-plan/pull/266) update @npmcli/package-json to v8 ([@mansona](https://github.com/mansona))\n  * [#265](https://github.com/release-plan/release-plan/pull/265) update @octokit/rest to v22 ([@mansona](https://github.com/mansona))\n  * [#264](https://github.com/release-plan/release-plan/pull/264) update chalk to v6 ([@mansona](https://github.com/mansona))\n  * [#255](https://github.com/release-plan/release-plan/pull/255) stop using fs-extra ([@mansona](https://github.com/mansona))\n\n#### :bug: Bug Fix\n* `release-plan`\n  * [#262](https://github.com/release-plan/release-plan/pull/262) fix path to github-changelog main ([@mansona](https://github.com/mansona))\n\n#### :house: Internal\n* `release-plan`\n  * [#269](https://github.com/release-plan/release-plan/pull/269) stop prettier complaining about json files ([@mansona](https://github.com/mansona))\n\n#### Committers: 1\n- Chris Manson ([@mansona](https://github.com/mansona))\n"
+  "description": "## Release (2026-09-24)\n\n* release-plan 0.20.1 (patch)\n\n#### :bug: Bug Fix\n* `release-plan`\n  * [#281](https://github.com/release-plan/release-plan/pull/281) Add trailing newline when writing JSON files ([@aklkv](https://github.com/aklkv))\n\n#### Committers: 1\n- Alexey Kulakov ([@aklkv](https://github.com/aklkv))\n"
 }

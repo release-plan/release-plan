@@ -1,5 +1,16 @@
 # release-plan Changelog
 
+## Release (2026-09-24)
+
+* release-plan 0.20.1 (patch)
+
+#### :bug: Bug Fix
+* `release-plan`
+  * [#281](https://github.com/release-plan/release-plan/pull/281) Add trailing newline when writing JSON files ([@aklkv](https://github.com/aklkv))
+
+#### Committers: 1
+- Alexey Kulakov ([@aklkv](https://github.com/aklkv))
+
 ## Release (2026-08-12)
 
 * release-plan 0.20.0 (minor)
