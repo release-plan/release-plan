@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`listChanges > renders the changes of every package since its own last release 1`] = `
+"
+## Unreleased (2099-01-01)
+
+#### :rocket: New Feature
+* \`the-force-awakens\`, \`rogue-one\`
+  * [#7](https://github.com/embroider-build/github-changelog/pull/7) feat: that is not how the Force works! ([@han-solo](https://github.com/han-solo))
+
+#### :nail_care: Enhancement
+* \`the-force-awakens\`, \`rogue-one\`
+  * [#7](https://github.com/embroider-build/github-changelog/pull/7) feat: that is not how the Force works! ([@han-solo](https://github.com/han-solo))
+
+#### :house: Maintenance
+* \`return-of-the-jedi\`
+  * This is the commit title for the issue (#8) ([@bot-user](https://github.com/bot-user))
+
+#### Committers: 2
+- Bot User [Bot] ([@bot-user](https://github.com/bot-user))
+- Han Solo ([@han-solo](https://github.com/han-solo))"
+`;

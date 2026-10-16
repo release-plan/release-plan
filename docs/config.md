@@ -2,6 +2,8 @@
 
 This project attemps to have sensible defaults so there is not any need to configure `release-plan` in most cases. There are some cases, like releasing a prerelease version of a package, that might require some configuration depending on the type of prerelease you are doing. You can configure that in the `release-plan` section of your `package.json`, or if you're in a monorepo in the `release-plan` section of the package that you want set the config for. This way you can have multiple packages with different configurations if you need to.
 
+The options for the changelog apply to the whole repo. They also go in the `release-plan` section, but only in the root `package.json`. See [Changelog](./changelog.md#configuration).
+
 ## `semverIncrementAs`
 
 When `release-plan` is deciding what part of the semver version to update it considers the **Impact** a PR has on a pakcage. Impact can be either `major`, `minor`, or `patch` and by default they directly map on to the `<major>.<minor>.<patch>` parts of semver versions. For projects that need extra control over how versions are incremented, e.g. you are in a pre-1.0 release and you want a `major` impact to only update the `<minor>` section of semver, then you can set the `semverIncrementAs` setting to remap which semver version a particular **impact** would affect.

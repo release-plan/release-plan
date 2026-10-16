@@ -16,7 +16,7 @@ release, and publishing to NPM.
 
 ## `gather-changes`  
 
-Uses `lerna-changelog` to build a description of all the PRs in the release.
+Builds a description of the PRs that changed each published package since the last release of that package, grouped by their GitHub labels.
 
 ## `parse-changes`
 

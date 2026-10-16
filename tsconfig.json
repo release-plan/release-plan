@@ -1,6 +1,6 @@
 {
-  "include": ["src/*.ts"],
-  "exclude": ["src/*.test.ts"],
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/test-support/**"],
   "compilerOptions": {
     "target": "es2022",
     "module": "NodeNext",

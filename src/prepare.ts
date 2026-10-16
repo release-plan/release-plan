@@ -1,4 +1,4 @@
-import { parseChangeLogOrExit } from './change-parser.js';
+import type { GatheredChanges } from './gather-changes.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { Solution } from './plan.js';
 import { planVersionBumps, saveSolution } from './plan.js';
@@ -65,13 +65,12 @@ function updateVersions(solution: Solution) {
 }
 
 export async function prepare(
-  newChangelogContent: string,
+  { markdown, changes }: GatheredChanges,
   singlePackage?: string,
 ) {
-  const changes = parseChangeLogOrExit(newChangelogContent);
   const solution = planVersionBumps(changes, singlePackage);
   updateVersions(solution);
-  const description = updateChangelog(newChangelogContent, solution);
+  const description = updateChangelog(markdown, solution);
   saveSolution(solution, description);
   return solution;
 }

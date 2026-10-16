@@ -2,8 +2,12 @@ import type { Impact, ParsedChangelog } from './change-parser.js';
 import { publishedInterPackageDeps } from './interdep.js';
 import { assertNever } from 'assert-never';
 import semver from 'semver';
-import { highlightMarkdown } from './highlight.js';
-import chalk from 'chalk';
+/**
+ * styleText is in every Node 22 release.
+ * Before 22.13 it is marked experimental and colors output that is not a TTY.
+ */
+// eslint-disable-next-line n/no-unsupported-features/node-builtins
+import { styleText } from 'node:util';
 import { resolve } from 'path';
 import { existsSync } from 'fs';
 
@@ -43,7 +47,9 @@ class Plan {
   addConstraint(packageName: string, impact: Impact, reason: string): void {
     const pkgConstraints = this.#constraints.get(packageName);
     if (!pkgConstraints) {
-      console.warn(chalk.yellow(`Warning: unknown package "${packageName}"`));
+      console.warn(
+        styleText('yellow', `Warning: unknown package "${packageName}"`),
+      );
       return;
     }
     if (
@@ -189,16 +195,16 @@ class Plan {
   }
 }
 
-function impactLabel(impact: Impact | undefined, text?: string) {
+function impactLabel(impact: Impact | undefined, text: string) {
   switch (impact) {
     case undefined:
-      return chalk.gray(text);
+      return styleText('gray', text);
     case 'patch':
-      return chalk.blueBright(text);
+      return styleText('blueBright', text);
     case 'minor':
-      return chalk.greenBright(text);
+      return styleText('greenBright', text);
     case 'major':
-      return chalk.redBright(text);
+      return styleText('redBright', text);
   }
 }
 
@@ -255,9 +261,7 @@ export function planVersionBumps(
   for (const section of changed.sections) {
     if ('unlabeled' in section) {
       process.stderr.write(
-        highlightMarkdown(
-          `# Unlabeled Changes\n\n${section.summaryText}\n\n*Cannot plan release until the above changes are labeled*.\n`,
-        ),
+        `# Unlabeled Changes\n\n${section.summaryText}\n\n*Cannot plan release until the above changes are labeled*.\n`,
       );
       process.exit(-1);
     }

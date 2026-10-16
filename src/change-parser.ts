@@ -55,6 +55,16 @@ function consumeSection(lines: string[]) {
   return matchedLines;
 }
 
+/**
+ * How a changelog section heading affects a release.
+ * Undefined for a heading that does not belong in a changelog.
+ */
+export function sectionKind(
+  heading: string,
+): { impact: Impact } | { unlabeled: true } | undefined {
+  return knownSections[heading];
+}
+
 function parseSection(lines: string[]): Section | undefined {
   const line = lines.shift();
   const heading = line ? sectionHeading(line) : undefined;

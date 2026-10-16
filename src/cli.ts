@@ -4,6 +4,7 @@ import type { Argv } from 'yargs';
 
 import { readFileSync } from 'fs';
 import { parseChangeLogOrExit } from './change-parser.js';
+import type { GatheredChanges } from './gather-changes.js';
 import { publish } from './publish.js';
 
 yargs(process.argv.slice(2))
@@ -78,11 +79,11 @@ yargs(process.argv.slice(2))
   )
   .command(
     'gather-changes',
-    `Uses lerna-changelog to build a description of all the PRs in the release.`,
+    `Reads git history since the last release of each package to build a description of all the PRs in the release.`,
     (yargs) => yargs,
     async function (/* opts */) {
       const { gatherChanges } = await import('./gather-changes.js');
-      process.stdout.write(await gatherChanges());
+      process.stdout.write((await gatherChanges()).markdown);
     },
   )
   .command(
@@ -90,13 +91,8 @@ yargs(process.argv.slice(2))
     `Parse the summary of changes into a structured format`,
     (yargs) => fromStdin(yargs),
     async function (opts) {
-      const { parseChangeLogOrExit } = await import('./change-parser.js');
       console.log(
-        JSON.stringify(
-          parseChangeLogOrExit(await newChangelogContent(opts)),
-          null,
-          2,
-        ),
+        JSON.stringify((await newChangelogContent(opts)).changes, null, 2),
       );
     },
   )
@@ -121,7 +117,7 @@ yargs(process.argv.slice(2))
     async function (opts) {
       const { planVersionBumps, explain } = await import('./plan.js');
       const solution = planVersionBumps(
-        parseChangeLogOrExit(await newChangelogContent(opts)),
+        (await newChangelogContent(opts)).changes,
         opts.singlePackage,
       );
       console.log(explain(solution));
@@ -139,13 +135,13 @@ function fromStdin(yargs: Argv) {
   });
 }
 
-async function newChangelogContent(opts: { fromStdin: boolean | undefined }) {
-  let content: string;
+async function newChangelogContent(opts: {
+  fromStdin: boolean | undefined;
+}): Promise<GatheredChanges> {
   if (opts.fromStdin) {
-    content = readFileSync(process.stdin.fd, 'utf8');
-  } else {
-    const { gatherChanges } = await import('./gather-changes.js');
-    content = await gatherChanges();
+    const markdown = readFileSync(process.stdin.fd, 'utf8');
+    return { markdown, changes: parseChangeLogOrExit(markdown) };
   }
-  return content;
+  const { gatherChanges } = await import('./gather-changes.js');
+  return gatherChanges();
 }
