@@ -34,8 +34,10 @@
     "chalk": "^6.0.0",
     "cli-highlight": "^2.1.11",
     "execa": "^9.5.2",
-    "github-changelog": "^3.1.0",
+    "hosted-git-info": "^10.1.1",
     "latest-version": "^9.0.0",
+    "make-fetch-happen": "^16.0.1",
+    "p-map": "^7.0.7",
     "parse-github-repo-url": "^1.4.1",
     "semver": "^7.3.5",
     "yargs": "^17.0.1"
@@ -43,6 +45,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.0",
     "@eslint/js": "^9.21.0",
+    "@types/hosted-git-info": "^3.0.5",
+    "@types/make-fetch-happen": "^10.0.4",
     "@types/node": "^26.2.0",
     "@types/npmcli__package-json": "^4.0.3",
     "@types/parse-github-repo-url": "^1.4.2",
