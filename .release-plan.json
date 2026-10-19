@@ -1,18 +1,18 @@
 {
   "solution": {
     "release-plan": {
-      "impact": "patch",
-      "oldVersion": "0.20.0",
-      "newVersion": "0.20.1",
+      "impact": "minor",
+      "oldVersion": "0.20.1",
+      "newVersion": "0.21.0",
       "tagName": "latest",
       "constraints": [
         {
-          "impact": "patch",
-          "reason": "Appears in changelog section :bug: Bug Fix"
+          "impact": "minor",
+          "reason": "Appears in changelog section :rocket: Enhancement"
         }
       ],
       "pkgJSONPath": "./package.json"
     }
   },
-  "description": "## Release (2026-09-24)\n\n* release-plan 0.20.1 (patch)\n\n#### :bug: Bug Fix\n* `release-plan`\n  * [#281](https://github.com/release-plan/release-plan/pull/281) Add trailing newline when writing JSON files ([@aklkv](https://github.com/aklkv))\n\n#### Committers: 1\n- Alexey Kulakov ([@aklkv](https://github.com/aklkv))\n"
+  "description": "## Release (2026-10-19)\n\n* release-plan 0.21.0 (minor)\n\n#### :rocket: Enhancement\n* `release-plan`\n  * [#286](https://github.com/release-plan/release-plan/pull/286) update github-changelog dep to v4 ([@mansona](https://github.com/mansona))\n\n#### Committers: 1\n- Chris Manson ([@mansona](https://github.com/mansona))\n"
 }

@@ -1,5 +1,16 @@
 # release-plan Changelog
 
+## Release (2026-10-19)
+
+* release-plan 0.21.0 (minor)
+
+#### :rocket: Enhancement
+* `release-plan`
+  * [#286](https://github.com/release-plan/release-plan/pull/286) update github-changelog dep to v4 ([@mansona](https://github.com/mansona))
+
+#### Committers: 1
+- Chris Manson ([@mansona](https://github.com/mansona))
+
 ## Release (2026-09-24)
 
 * release-plan 0.20.1 (patch)
